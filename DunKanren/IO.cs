@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -8,44 +10,53 @@ namespace DunKanren
 {
     public static class IO
     {
-        public static bool Debugging = false;
+        private static bool PromptUser = false;
 
 
-        public static void Prompt()
+        public static void DisablePrompting()
         {
-            Console.WriteLine("[<─┘]");
-            Console.ReadKey(true);
-            Console.CursorTop--;
-            Console.Write("     ");
-            Console.CursorLeft = 0;
+            PromptUser = false;
         }
 
+        public static void Prompt(bool manualOverride = false)
+        {
+            if (PromptUser || manualOverride)
+            {
+                Console.WriteLine("[<─┘]");
+                Console.ReadKey(true);
+                Console.CursorTop--;
+                Console.Write("     ");
+                Console.CursorLeft = 0;
+            }
+        }
+
+        [Conditional("DEBUG")]
         public static void Debug_Prompt()
         {
-            if (IO.Debugging) IO.Prompt();
+            IO.Prompt();
         }
 
+        [Conditional("DEBUG")]
         public static void Debug_Print(string s)
         {
-            if (!Debugging) return;
-            
             Console.WriteLine(s);
             Prompt();
         }
 
+        [Conditional("DEBUG")]
         public static void Debug_Print(string s, bool conditional)
         {
             if (conditional) Debug_Print(s);
         }
 
+        [Conditional("DEBUG")]
         public static void Debug_Print(IEnumerable<string> ss)
         {
-            if (!Debugging) return;
-
             foreach (string s in ss) Console.WriteLine(s);
             Prompt();
         }
 
+        [Conditional("DEBUG")]
         public static void Debug_Print(IEnumerable<string> ss, bool conditional)
         {
             if (conditional) Debug_Print(ss);

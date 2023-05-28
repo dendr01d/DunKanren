@@ -17,24 +17,16 @@ namespace DunKanren
             this.Data = data;
         }
 
-
-        public Term Reflect() => this;
-        public bool TryReify(out D? result)
-        {
-            result = this.Data;
-            return true;
-        }
-
-
         public override bool SameAs(State s, Term other) => other.SameAs(s, this);
         public override bool SameAs<O>(State s, Value<O> other) => other.Data!.Equals(this.Data);
 
-        public override State? UnifyWith(State s, Term other) => other.UnifyWith(s, this);
-        public override State? UnifyWith<O>(State s, Value<O> other) => this.SameAs(s, other) ? s.Affirm(other, this) : s.Reject(other, this);
+        public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);
+        public override bool TryUnifyWith<O>(State s, Value<O> other, out State result) =>
+            this.SameAs(s, other)
+            ? s.Affirm(other, this, out result)
+            : s.Reject(other, this, out result);
 
-
-
-        //other.Equals(this) ? s.Affirm(other, this) : s.Reject(other, this);
+        public override bool IsConcrete() => true;
 
         public override string ToString() => this.Data?.ToString() ?? "NULL";
     }

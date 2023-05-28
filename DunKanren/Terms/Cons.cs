@@ -30,11 +30,11 @@ namespace DunKanren
             this.Cdr = cdr;
         }
 
-        public Cons(Term car, Term cdar, Term cddr, params Term[] more)
-        {
-            this.Car = car;
-            this.Cdr = Cons.Truct(cdar, Cons.Truct(cddr, Cons.TructList(more)));
-        }
+        //public Cons(Term car, Term cdar, Term cddr, params Term[] more)
+        //{
+        //    this.Car = car;
+        //    this.Cdr = Cons.Truct(cdar, Cons.Truct(cddr, Cons.TructList(more)));
+        //}
 
         public static Cons Truct(Term car, Term cdr) => new Cons(car, cdr);
         public static Term TructList(params Term[] sequence)
@@ -46,6 +46,31 @@ namespace DunKanren
             else
             {
                 return new Cons(sequence[0], Cons.TructList(sequence.Skip(1).ToArray()));
+            }
+        }
+
+        public static Term Literal(string chars) => Literal(chars.ToArray());
+        public static Term Literal(char[] chars) => Literal(chars.Select(x => ValueFactory.Box(x)).ToArray());
+        public static Term Literal(params Term[] sequence)
+        {
+            if (sequence.Length < 2)
+            {
+                return sequence.First();
+            }
+            else
+            {
+                return Literal(sequence.SkipLast(2), new Cons(sequence[^2], sequence[^1]));
+            }
+        }
+        private static Cons Literal(IEnumerable<Term> sequence, Cons nested)
+        {
+            if (sequence.Any())
+            {
+                return Literal(sequence.SkipLast(1), new Cons(sequence.Last(), nested));
+            }
+            else
+            {
+                return nested;
             }
         }
 
@@ -63,20 +88,14 @@ namespace DunKanren
             return this.Car.SameAs(s, other.Car) && this.Cdr.SameAs(s, other.Cdr);
         }
 
-        public override State? UnifyWith(State s, Term other) => other.UnifyWith(s, this);
-        public override State? UnifyWith(State s, Cons other)
+        public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);
+        public override bool TryUnifyWith(State s, Cons other, out State result)
         {
-            State? half = this.Car.UnifyWith(s, other.Car);
-
-            if (half is null)
-            {
-                return half;
-            }
-            else
-            {
-                return this.Cdr.UnifyWith(half, other.Cdr);
-            }
+            return this.Car.TryUnifyWith(s, other.Car, out result)
+                && this.Cdr.TryUnifyWith(result, other.Cdr, out result);
         }
+
+        public override bool IsConcrete() => this.Car.IsConcrete() && this.Cdr.IsConcrete();
 
         public override string ToString()
         {
@@ -102,11 +121,24 @@ namespace DunKanren
         }
 
 
-        public override IEnumerable<string> ToTree(string prefix, bool first, bool last)
-        {
-            yield return prefix + IO.BRANCH + this.Car.ToTree(prefix, false, false);
-            yield return prefix + IO.LEAVES + this.Cdr.ToTree(prefix, false, true);
-        }
+        //public override IEnumerable<string> ToTree(string prefix, bool first, bool last)
+        //{
+        //    string parentPrefix = first ? "" : prefix + (last ? IO.LEAVES : IO.HEADER);
+        //    string childPrefix = first ? "" : prefix + (last ? IO.SPACER : IO.JUMPER);
+
+        //    foreach (string line in this.Car.ToTree(parentPrefix, false, false))
+        //    {
+        //        yield return line;
+        //    }
+
+        //    foreach (string line in this.Cdr.ToTree(childPrefix, false, true))
+        //    {
+        //        yield return line;
+        //    }
+
+        //    //yield return prefix + IO.HEADER + IO.ALONER + this.Car.ToTree(prefix, false, false);
+        //    //yield return prefix + IO.LEAVES + this.Cdr.ToTree(prefix, false, true);
+        //}
     }
 
     /*

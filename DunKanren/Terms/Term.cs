@@ -29,19 +29,44 @@ namespace DunKanren
         public virtual bool SameAs(State s, Nil other) => false;
         public virtual bool SameAs(State s, Cons other) => false;
         //public virtual bool SameAs<T>(State s, Cont<T> other) where T : Term => false;
+        //public virtual bool SameAs(State s, Seq other) => false;
+
+        //A term is concrete if it has a definite value regardless of contextual state.
+        //Variables are never concrete
+        //A cons is concrete if it contains no variables within its entire tree.
+        //Everything else is concrete.
+        public abstract bool IsConcrete();
+
+        /// <summary>
+        /// If this term and the other term share concreteness (or lack thereof),
+        /// returns whether or not they are equivalent. Otherwise, returns null.
+        /// </summary>
+        public bool? InvariantlySame(Term other)
+        {
+            if (this.IsConcrete() == other.IsConcrete())
+            {
+                return this.SameAs(State.InitialState(), other);
+            }
+
+            return null;
+        }
 
         #endregion
 
 
         #region Unification
-        public abstract State? UnifyWith(State s, Term other);
+        public abstract bool TryUnifyWith(State s, Term other, out State result);
 
-        public virtual State? UnifyWith(State s, Variable other) => other.SameAs(s, this) ? s.Affirm(other, this) : s.Extend(other, this);
-        public virtual State? UnifyWith<D>(State s, Variable<D> other) => s.Reject(other, this);
-        public virtual State? UnifyWith<D>(State s, Value<D> other) => s.Reject(other, this);
-        public virtual State? UnifyWith(State s, Nil other) => s.Reject(other, this);
-        public virtual State? UnifyWith(State s, Cons other) => s.Reject(other, this);
+        public virtual bool TryUnifyWith(State s, Variable other, out State result) =>
+            other.SameAs(s, this)
+            ? s.Affirm(other, this, out result)
+            : s.TryExtend(other, this, out result);
+        public virtual bool TryUnifyWith<D>(State s, Variable<D> other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith<D>(State s, Value<D> other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith(State s, Nil other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith(State s, Cons other, out State result) => s.Reject(other, this, out result);
         //public virtual State? UnifyWith<T>(State s, Cont<T> other) where T : Term => s.Reject(other, this);
+        //public virtual bool TryUnifyWith(State s, Seq other, out State result) => s.Reject(other, this, out result);
 
         #endregion
 
@@ -51,7 +76,12 @@ namespace DunKanren
         public virtual string ToVerboseString() => this.ToString();
 
         public IEnumerable<string> ToTree() => this.ToTree("", true, false);
-        public virtual IEnumerable<string> ToTree(string prefix, bool first, bool last) => new string[] { prefix + this.ToString() };
+        public virtual IEnumerable<string> ToTree(string prefix, bool first, bool last) => new string[]
+        {
+            last
+            ? prefix + IO.LEAVES + this.ToString()
+            : prefix + IO.BRANCH + this.ToString()
+        };
 
 
         public override bool Equals(object? obj) => ReferenceEquals(obj, this);
@@ -64,15 +94,16 @@ namespace DunKanren
         public static implicit operator Term(int i) => ValueFactory.Box(i);
         public static implicit operator Term(char c) => ValueFactory.Box(c);
         public static implicit operator Term(bool b) => b ? Term.True : Term.False;
-        //public static implicit operator Term(string s) => Cons.Truct(s);
         public static implicit operator Term(string s) => Cons.Truct(s);
+        public static implicit operator Term(char[] cs) => Cons.Literal(cs);
+        //public static implicit operator Term(string s) => new Seq(s.Select(x => ValueFactory.Box(x)).ToArray());
 
         #endregion
 
         #region Operator Overloads
 
-        public static Goal operator ==(Term left, Term right) => Goal.Equality(left, right);
-        public static Goal operator !=(Term left, Term right) => Goal.Disequality(left, right);
+        public static Goals.Goal operator ==(Term left, Term right) => new Goals.Equality(left, right);
+        public static Goals.Goal operator !=(Term left, Term right) => new Goals.Disequality(left, right);
 
         #endregion
     }

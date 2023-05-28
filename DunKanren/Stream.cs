@@ -9,7 +9,7 @@ namespace DunKanren
 {
     public class Stream : IEnumerable<State>
     {
-        private readonly IEnumerable<State> _Stream;
+        private IEnumerable<State> _Stream { get; set; }
 
         private Stream(IEnumerable<State> stream)
         {
