@@ -26,9 +26,21 @@ namespace DunKanren
             ? s.Affirm(other, this, out result)
             : s.Reject(other, this, out result);
 
-        public override bool IsConcrete() => true;
-
-        public override string ToString() => this.Data?.ToString() ?? "NULL";
+        public override string ToString()
+        {
+            if (this.Data is char c)
+            {
+                return $"\'{c}\'";
+            }
+            else if (this.Data != null && this.Data.ToString() is string s)
+            {
+                return s;
+            }
+            else
+            {
+                return "<UNK?>";
+            }
+        }
     }
 
     public static class ValueFactory

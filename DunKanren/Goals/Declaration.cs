@@ -6,14 +6,16 @@ using System.Threading.Tasks;
 
 namespace DunKanren.Goals
 {
+    public abstract class Declaration : Goal { }
+
     /// <summary>
     /// A goal that essentially acts as a pass-through, but it adds new variables to the pool
     /// </summary>
-    public sealed class Fresh : Goal
+    public sealed class Fresh : Declaration
     {
         public override string Expression => $"£ ({String.Join(", ", this.VariableNames)})";
         public override string Description => $"There exist variables ({String.Join(", ", this.VariableNames)})";
-        public override IEnumerable<IPrintable> Components => Array.Empty<IPrintable>();
+        public override IEnumerable<IPrintable> ChildGoals => Array.Empty<IPrintable>();
 
         public readonly string[] VariableNames;
 
@@ -27,7 +29,7 @@ namespace DunKanren.Goals
             this.VariableNames = newVars.Select(x => x.Name ?? "UnkVar").ToArray();
         }
 
-        protected override Stream Pursuit(State s)
+        protected override Stream Application(State s)
         {
             s.DeclareVars(out State newState, this.VariableNames);
             return Stream.Singleton(newState);
@@ -43,42 +45,46 @@ namespace DunKanren.Goals
         {
             throw new NotImplementedException();
         }
+
+        public override int Ungroundedness => this.VariableNames.Length;
     }
 
-    public sealed class Call : Goal
+    public sealed class Call : Declaration
     {
         public override string Expression => $"Lambda()";
         public override string Description => $"The evaluation of the lambda expression takes the form";
-        public override IEnumerable<IPrintable> Components => Array.Empty<IPrintable>();
+        public override IEnumerable<IPrintable> ChildGoals => Array.Empty<IPrintable>();
 
-        private readonly Func<State, Stream> Application;
+        private readonly Func<State, Stream> CallGoal;
 
         public Call(Func<State, Stream> lambda)
         {
-            this.Application = lambda;
+            this.CallGoal = lambda;
         }
 
         public Call(Goal lambda)
         {
-            this.Application = lambda.PursueIn;
+            this.CallGoal = lambda.PursueIn;
         }
 
-        protected override Stream Pursuit(State s)
+        protected override Stream Application(State s)
         {
-            return this.Application(s.Next());
+            return this.CallGoal(s.Next());
         }
 
         public override Goal Negate()
         {
             throw new NotImplementedException();
         }
+
+        public override int Ungroundedness => 10;
     }
 
-    public sealed class CallFresh : Goal
+    public sealed class CallFresh : Declaration
     {
         public override string Expression => this.DynamicExpression;
         public override string Description => this.DynamicDescription;
-        public override IEnumerable<IPrintable> Components => this.DynamicChild;
+        public override IEnumerable<IPrintable> ChildGoals => this.DynamicChild;
 
         private string DynamicExpression;
         private string DynamicDescription;
@@ -88,14 +94,14 @@ namespace DunKanren.Goals
         private Fresh Freshener;
         private Call Caller;
 
-        protected override Stream Pursuit(State s)
+        protected override Stream Application(State s)
         {
             return this.Caller.PursueIn(s);
         }
 
         public override Goal Negate()
         {
-            throw new NotImplementedException();
+            return new Top();
         }
 
         private CallFresh(System.Reflection.MethodInfo body, Func<Variable[], Goal> constructor)
@@ -153,6 +159,8 @@ namespace DunKanren.Goals
         public CallFresh(Func<Variable, Variable, Variable, Variable, Variable, Variable, Variable, Variable, Goal> lambda) :
             this(lambda.Method, (v) => lambda(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]))
         { }
+
+        public override int Ungroundedness => -1 * this.Declarations.Length;
     }
 
 

@@ -24,6 +24,8 @@ namespace DunKanren
             s.Subs.Add(this, this);
         }
 
+        public override int Ungroundedness => 1;
+
         public override Term Dereference(State s)
         {
             if (s.Subs.TryGetValue(this, out Term? lookup) && lookup is not null && !lookup.Equals(this))
@@ -44,9 +46,9 @@ namespace DunKanren
         public override bool TryUnifyWith<D>(State s, Variable<D> other, out State result) => s.TryExtend(this, other, out result);
         public override bool TryUnifyWith<D>(State s, Value<D> other, out State result) => s.TryExtend(this, other, out result);
         public override bool TryUnifyWith(State s, Nil other, out State result) => s.TryExtend(this, other, out result);
-        public override bool TryUnifyWith(State s, Cons other, out State result) => s.TryExtend(this, other, out result);
-
-        public override bool IsConcrete() => false;
+        public override bool TryUnifyWith(State s, LCons other, out State result) => s.TryExtend(this, other, out result);
+        public override bool TryUnifyWith<D1, D2>(State s, Cons<D1, D2> other, out State result)
+            => s.TryExtend(this, other, out result);
 
         public override string ToString() => this.Symbol + "#" + this.RecursionLevel;
         public override IEnumerable<string> ToTree(string prefix, bool first, bool last)

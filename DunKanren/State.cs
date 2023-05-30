@@ -40,6 +40,8 @@ namespace DunKanren
 
         public State Dupe() => new(this, false);
 
+        public int Ungroundedness => this.Subs.Count(x => x.Key.Equals(x.Value));
+
         public Variable[] DeclareVars(out State result, params string[] varNames)
         {
             State newState = this.Dupe();
@@ -76,14 +78,16 @@ namespace DunKanren
         {
             if (this.Negs.TryGetValue(v, out var ns) && ns.Contains(t))
             {
+                //if the new substitution violates a constraint, fail right off the bat
                 IO.Debug_Print(v.ToString() + " NEV " + t.ToString());
                 result = this;
                 return false;
             }
             else if (this.Subs.TryGetValue(v, out var ss2) && ss2.Equals(t))
             {
+                //if the terms are already equal without any new substitutions, succeed
                 result = this;
-                return true;
+                return VerifyConstraints(ref result);
             }
             else if (!this.Subs.ContainsKey(v) || (this.Subs.TryGetValue(v, out var ss) && ss.Equals(v)))
             {
@@ -96,8 +100,8 @@ namespace DunKanren
                     result.VariableCounter++;
                 }
 
-                    IO.Debug_Print(v.ToString() + " DEF " + t + " in " + result.ToString());
-                return true;
+                IO.Debug_Print(v.ToString() + " DEF " + t + " in " + result.ToString());
+                return VerifyConstraints(ref result);
             }
             else //should only occur if it's attempting to redefine an existing variable binding?
             {
@@ -105,6 +109,29 @@ namespace DunKanren
                 result = this;
                 return false;
             }
+        }
+
+        private static bool VerifyConstraints(ref State result)
+        {
+            //foreach(var kvp in result.Negs)
+            //{
+            //    Variable lastKey = kvp.Key;
+
+            //    while (lastKey.Dereference(result) is Variable t && !t.Equals(lastKey))
+            //    {
+            //        if (result.Subs.TryGetValue(lastKey, out Term? tDef)
+            //            && !ReferenceEquals(tDef, null)
+            //            && kvp.Value.Contains(tDef))
+            //        {
+            //            result = State.InitialState();
+            //            return false;
+            //        }
+
+            //        lastKey = t;
+            //    }
+            //}
+
+            return true;
         }
 
         public bool Affirm(Term u, Term v, out State result)
@@ -128,21 +155,28 @@ namespace DunKanren
 
             IO.Debug_Print(u.ToString() + " NQ? " + v.ToString());
 
-            if (!this.TryUnify(u, v, out result))
+            if (!this.TryUnify(u, v, out State unifiedResult))
             {
+                //if unification fails, then the two terms can never be equal
+                //and so we don't need to keep a constraint around to show it
                 IO.Debug_Print("===>\n" + u.ToString() + " NEV " + v.ToString() + "\n");
+                result = this;
                 return true;
             }
-            else if (result == this)
+            else if (unifiedResult == this)
             {
+                //if unification succeeds without extending the resulting state
+                //then the terms are ALREADY equal, and we've failed outright
                 IO.Debug_Print("===>\n" + u.ToString() + " EQL " + v.ToString() + "\n");
+                result = this;
                 return false;
             }
             else
             {
-                //find what new associations were created and turn them into constraints
-                result = ConstrainValues(this, DifferentiateSubs(this, result));
-                IO.Debug_Print("===>\n" + u.ToString() + " DEF " + v.ToString() + " in " + result.ToString());
+                //if unification succeeds, but requires new subs TO succeed
+                //then we simply disallow any of those subs from ever being made
+                result = ConstrainValues(this, DifferentiateSubs(this, unifiedResult));
+                IO.Debug_Print("===>\n" + u.ToString() + " NDF " + v.ToString() + " in " + result.ToString());
                 return true;
             }
         }

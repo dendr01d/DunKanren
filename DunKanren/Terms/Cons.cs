@@ -1,33 +1,231 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Data;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Numerics;
-using System.Runtime.CompilerServices;
+﻿using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace DunKanren
 {
-    public class Cons : Term
+    public class Cons<T1, T2> : Term
+        where T1 : Term
+        where T2 : Term
+    {
+        public virtual T1 Car { get; init; }
+        public virtual T2 Cdr { get; init; }
+
+        public Cons(T1 car, T2 cdr)
+        {
+            this.Car = car;
+            this.Cdr = cdr;
+        }
+
+        protected virtual bool IsList => false;
+        protected virtual bool IsString => false;
+
+        public override int Ungroundedness => this.Car.Ungroundedness + this.Cdr.Ungroundedness;
+
+        public override Term Dereference(State s)
+        {
+            return Cons.Truct(this.Car.Dereference(s), this.Cdr.Dereference(s));
+        }
+
+        public override bool SameAs(State s, Term other) => other.SameAs(s, this);
+        public override bool SameAs<D1, D2>(State s, Cons<D1, D2> other)
+        {
+            return this.Car.SameAs(s, other.Car) && this.Cdr.SameAs(s, other.Cdr);
+        }
+
+        public override bool TryUnifyWith(State s, Term other, out State result) =>
+            other.TryUnifyWith(s, this, out result);
+
+        public override bool TryUnifyWith<D1, D2>(State s, Cons<D1, D2> other, out State result)
+        {
+            return this.Car.TryUnifyWith(s, other.Car, out result)
+                && this.Cdr.TryUnifyWith(result, other.Cdr, out result);
+        }
+
+        public override string ToString()
+        {
+            if (this.IsString)
+            {
+                return $"{this.Car}{this.Cdr}";
+            }
+            else if (this.IsList)
+            {
+                return $"{this.Car}, {this.Cdr}";
+            }
+            else
+            {
+                return $"( {this.Car} . {this.Cdr} )";
+            }
+        }
+    }
+
+    public class ConsCell : Cons<Term, Term>
+    {
+        public ConsCell(Term car, Term cdr) : base(car, cdr) { }
+    }
+
+    public class ConsList<T> : Cons<T, MaybeNil<ConsList<T>>>
+        where T : Term
+    {
+        public ConsList(T car) : base(car, new()) { }
+        public ConsList(T car, ConsList<T> cdr) : base(car, new(cdr)) { }
+
+        protected override bool IsList => true;
+
+        //public override Term Dereference(State s)
+        //{
+        //    if (this.UngroundedNess > 0)
+        //    {
+        //        return base.Dereference(s);
+        //    }
+
+        //    return this;
+        //}
+
+        //public override string ToString()
+        //{
+        //    StringBuilder sb = new($"[{this.Car}");
+
+        //    return this.Cdr.Deconstruct(
+        //        r => r.ToSubString(sb),
+        //        n => $"[{this.Car}]");
+        //}
+
+        //internal virtual string ToSubString(StringBuilder prior)
+        //{
+        //    prior.Append($", {this.Car}");
+
+        //    return this.Cdr.Deconstruct(
+        //        r => r.ToSubString(prior),
+        //        n => prior.Append(']').ToString());
+        //}
+
+        public static implicit operator ConsList<T>(Cons<T, Nil> cell) => new ConsList<T>(cell.Car);
+    }
+
+    public class ConsString : ConsList<Value<char>>
+    {
+        public ConsString(Value<char> car) : base(car) { }
+        public ConsString(Value<char> car, ConsString cdr) : base(car, cdr) { }
+
+        public ConsString(char car) : this(ValueFactory.Box(car)) { }
+        public ConsString(char car, ConsString cdr) : this(ValueFactory.Box(car), cdr) { }
+
+        protected override bool IsString => true;
+
+        //public override Term Dereference(State s) => this;
+
+        //public override string ToString()
+        //{
+        //    StringBuilder sb = new($"\"{this.Car}");
+
+        //    return this.Cdr.Deconstruct(
+        //        r => r.ToSubString(sb),
+        //        n => $"[{this.Car}]");
+        //}
+
+        //internal override string ToSubString(StringBuilder prior)
+        //{
+        //    prior.Append($"{this.Car}");
+
+        //    return this.Cdr.Deconstruct(
+        //        r => r.ToSubString(prior),
+        //        n => prior.Append('\"').ToString());
+        //}
+
+        public static implicit operator ConsString(Cons<Value<char>, Nil> cell) => new ConsString(cell.Car);
+    }
+
+    public class ConsList : ConsList<Term>
+    {
+        public ConsList(Term car) : base(car) { }
+        public ConsList(Term car, ConsList cdr) : base(car, cdr) { }
+    }
+
+    public class ConsEmpty : ConsList
+    {
+        public ConsEmpty() : base(Term.NIL) { }
+
+        public override Nil Car { get => Term.NIL; }
+
+        public override int Ungroundedness => Term.NIL.Ungroundedness;
+        public override bool SameAs(State s, Term other) => other.SameAs(s, Term.NIL);
+        public override bool TryUnifyWith(State s, Term other, out State result)
+        {
+            return other.TryUnifyWith(s, Term.NIL, out result);
+        }
+
+        public override string ToString() => Term.NIL.ToString();
+        public override string ToVerboseString() => Term.NIL.ToVerboseString();
+    }
+
+    public static class Cons
+    {
+        public static Cons<T1, T2> Truct<T1, T2>(T1 car, T2 cdr)
+            where T1 : Term
+            where T2 : Term
+        {
+            return new Cons<T1, T2>(car, cdr);
+        }
+
+        public static ConsList<T> Truct<T>(T car, ConsList<T> cdr)
+            where T : Term
+        {
+            return new ConsList<T>(car, cdr);
+        } 
+
+        public static ConsString Truct(Value<char> car, ConsString cdr)
+        {
+            return new ConsString(car, cdr);
+        }
+
+        public static ConsList<T> Truct<T>(T car, Nil _)
+            where T : Term
+            => new ConsList<T>(car);
+
+        public static ConsString Truct(Value<char> car, Nil _)
+            => new ConsString(car);
+
+        public static ConsString Truct(string s)
+        {
+            if (s.Length == 1)
+            {
+                return new ConsString(s[0]);
+            }
+            else
+            {
+                return new ConsString(s[0], Truct(s[1..]));
+            }
+        }
+    }
+
+    public class LCons : Term
     {
         public Term Car { get; init; }
         public Term Cdr { get; init; }
 
-        protected Cons()
+        private bool IsList;
+        private bool IsString;
+
+        private LCons()
         {
-            this.Car = Term.nil;
-            this.Cdr = Term.nil;
+            this.Car = Term.NIL;
+            this.Cdr = Term.NIL;
+            this.IsList = false;
         }
 
-        public Cons(Term car, Term cdr)
+        private LCons(Term car) : this()
+        {
+            this.Car = car;
+            this.IsList = true;
+            this.IsString = car is Value<char>;
+        }
+
+        private LCons(Term car, Term cdr) : this()
         {
             this.Car = car;
             this.Cdr = cdr;
+            this.IsList = cdr is Nil;
+            this.IsString = this.IsList && car is Value<char>;
         }
 
         //public Cons(Term car, Term cdar, Term cddr, params Term[] more)
@@ -36,72 +234,53 @@ namespace DunKanren
         //    this.Cdr = Cons.Truct(cdar, Cons.Truct(cddr, Cons.TructList(more)));
         //}
 
-        public static Cons Truct(Term car, Term cdr) => new Cons(car, cdr);
-        public static Term TructList(params Term[] sequence)
+        public static LCons Truct(Term car, Term cdr) => new LCons(car, cdr);
+
+        public static Term TructList(params Term[] sequence) => sequence.Any() ? GuaranteedCons(sequence) : Term.NIL;
+
+        private static LCons GuaranteedCons(params Term[] sequence)
         {
-            if (sequence.Length == 0)
+            if (sequence.Length == 1)
             {
-                return Term.nil;
+                return LCons.Truct(sequence[0], Term.NIL);
             }
             else
             {
-                return new Cons(sequence[0], Cons.TructList(sequence.Skip(1).ToArray()));
+                return LCons.Truct(sequence[0], GuaranteedCons(sequence[1..]));
             }
         }
 
-        public static Term Literal(string chars) => Literal(chars.ToArray());
-        public static Term Literal(char[] chars) => Literal(chars.Select(x => ValueFactory.Box(x)).ToArray());
-        public static Term Literal(params Term[] sequence)
-        {
-            if (sequence.Length < 2)
-            {
-                return sequence.First();
-            }
-            else
-            {
-                return Literal(sequence.SkipLast(2), new Cons(sequence[^2], sequence[^1]));
-            }
-        }
-        private static Cons Literal(IEnumerable<Term> sequence, Cons nested)
-        {
-            if (sequence.Any())
-            {
-                return Literal(sequence.SkipLast(1), new Cons(sequence.Last(), nested));
-            }
-            else
-            {
-                return nested;
-            }
-        }
+        public static Term Truct(string s) => GuaranteedCons(s.Select(ValueFactory.Box).ToArray());
 
-        public static Term Truct(string s) => Cons.TructList(s.Select(x => ValueFactory.Box(x)).ToArray());
-
+        public override int Ungroundedness => this.Car.Ungroundedness + this.Cdr.Ungroundedness;
 
         public override Term Dereference(State s)
         {
-            return Cons.Truct(this.Car.Dereference(s), this.Cdr.Dereference(s));
+            return LCons.Truct(this.Car.Dereference(s), this.Cdr.Dereference(s));
         }
 
         public override bool SameAs(State s, Term other) => other.SameAs(s, this);
-        public override bool SameAs(State s, Cons other)
+        public override bool SameAs(State s, LCons other)
         {
             return this.Car.SameAs(s, other.Car) && this.Cdr.SameAs(s, other.Cdr);
         }
 
         public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);
-        public override bool TryUnifyWith(State s, Cons other, out State result)
+        public override bool TryUnifyWith(State s, LCons other, out State result)
         {
             return this.Car.TryUnifyWith(s, other.Car, out result)
                 && this.Cdr.TryUnifyWith(result, other.Cdr, out result);
         }
 
-        public override bool IsConcrete() => this.Car.IsConcrete() && this.Cdr.IsConcrete();
-
         public override string ToString()
         {
             if (this.IsStringy())
             {
-                return "\"" + this.ToSubString() + "\"";
+                return $"\"{this.ToSubString()}\"";
+            }
+            else if (this.IsListy())
+            {
+                return $"[{this.ToSubList()}]";
             }
             else
             {
@@ -112,14 +291,23 @@ namespace DunKanren
 
         private string ToSubString()
         {
-            return this.Car.ToString() + (this.Cdr as Cons)?.ToSubString() ?? Term.nil.ToString();
+            return this.Car.ToString() + (this.Cdr as LCons)?.ToSubString() ?? Term.NIL.ToString();
         }
 
         private bool IsStringy()
         {
-            return this.Car is Value<char> && (this.Cdr is Nil || ((this.Cdr as Cons)?.IsStringy() ?? false));
+            return this.Car is Value<char> && (this.Cdr is Nil || ((this.Cdr as LCons)?.IsStringy() ?? false));
         }
 
+        private string ToSubList()
+        {
+            return $"{this.Car}, {((this.Cdr as LCons)?.ToSubList() ?? Term.NIL.ToString())}";
+        }
+
+        private bool IsListy()
+        {
+            return this.Cdr is Nil || ((this.Cdr as LCons)?.IsListy() ?? false);
+        }
 
         //public override IEnumerable<string> ToTree(string prefix, bool first, bool last)
         //{

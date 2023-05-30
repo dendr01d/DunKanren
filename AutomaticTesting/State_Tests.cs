@@ -91,12 +91,18 @@ namespace AutomaticTesting
         [TestMethod]
         public void Test_Extension()
         {
+            Console.WriteLine("Baseline State:");
             State s = State.InitialState();
+            Console.WriteLine(s);
 
             Variable[] altVars = State.InitialState().DeclareVars(out State _, "test1", "test2", "test3");
 
+            Console.WriteLine($"Extending {altVars[0]} with {altVars[1]}:");
             bool succ1 = s.TryExtend(altVars[0], altVars[1], out s);
+            Console.WriteLine(s);
+            Console.WriteLine($"Extending {altVars[1]} with {altVars[2]}:");
             bool succ2 = s.TryExtend(altVars[1], altVars[2], out s);
+            Console.WriteLine(s);
 
             Assert.AreEqual(true, succ1);
             Assert.AreEqual(true, succ2);
@@ -106,21 +112,30 @@ namespace AutomaticTesting
             Assert.AreEqual(2, s.VariableCounter);
 
 
+            Console.WriteLine($"Extending {altVars[0]} with {altVars[2]}:");
             bool succ3 = s.TryExtend(altVars[0], altVars[2], out s);
+            Console.WriteLine(s);
             Assert.AreEqual(false, succ3);
             Assert.AreNotEqual(altVars[2], s.Subs[altVars[0]]);
 
 
+            Console.WriteLine($"Extending {altVars[0]} with {altVars[1]} in new state:");
             bool succ4 = s.TryExtend(altVars[0], altVars[1], out State s2);
+            Console.WriteLine(s2);
             Assert.AreEqual(true, succ4);
             CollectionAssert.AreEquivalent(s.Subs, s2.Subs);
 
+            Console.WriteLine($"Adding constraints on {altVars[2]}:");
             s2.Negs.Add(altVars[2], new HashSet<Term>() { altVars[0], altVars[1] });
+            Console.WriteLine(s2);
 
+            Console.WriteLine($"Extending {altVars[2]} with {altVars[0]} in new state:");
             bool succ5 = s2.TryExtend(altVars[2], altVars[0], out State s3);
+            Console.WriteLine(s3);
             Assert.AreEqual(false, succ5);
             CollectionAssert.AreEquivalent(s2.Subs, s3.Subs);
 
+            Console.WriteLine($"Extending {altVars[2]} with {altVars[1]} in new state:");
             bool succ6 = s2.TryExtend(altVars[2], altVars[1], out State s4);
             Assert.AreEqual(false, succ6);
             CollectionAssert.AreEquivalent(s2.Subs, s4.Subs);

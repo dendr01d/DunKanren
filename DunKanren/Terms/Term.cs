@@ -15,7 +15,7 @@ namespace DunKanren
         public static readonly Value<bool> True = new(true);
         public static readonly Value<bool> False = new(false);
 
-        public static readonly Nil nil = new();
+        public static readonly Nil NIL = new();
 
         public virtual Term Dereference(State s) => this;
 
@@ -27,7 +27,8 @@ namespace DunKanren
         public virtual bool SameAs<D>(State s, Variable<D> other) => false;
         public virtual bool SameAs<D>(State s, Value<D> other) => false;
         public virtual bool SameAs(State s, Nil other) => false;
-        public virtual bool SameAs(State s, Cons other) => false;
+        public virtual bool SameAs(State s, LCons other) => false;
+        public virtual bool SameAs<D1, D2>(State s, Cons<D1, D2> other) where D1 : Term where D2 : Term => false;
         //public virtual bool SameAs<T>(State s, Cont<T> other) where T : Term => false;
         //public virtual bool SameAs(State s, Seq other) => false;
 
@@ -35,21 +36,8 @@ namespace DunKanren
         //Variables are never concrete
         //A cons is concrete if it contains no variables within its entire tree.
         //Everything else is concrete.
-        public abstract bool IsConcrete();
 
-        /// <summary>
-        /// If this term and the other term share concreteness (or lack thereof),
-        /// returns whether or not they are equivalent. Otherwise, returns null.
-        /// </summary>
-        public bool? InvariantlySame(Term other)
-        {
-            if (this.IsConcrete() == other.IsConcrete())
-            {
-                return this.SameAs(State.InitialState(), other);
-            }
-
-            return null;
-        }
+        public virtual int Ungroundedness { get; } = 0;
 
         #endregion
 
@@ -64,7 +52,13 @@ namespace DunKanren
         public virtual bool TryUnifyWith<D>(State s, Variable<D> other, out State result) => s.Reject(other, this, out result);
         public virtual bool TryUnifyWith<D>(State s, Value<D> other, out State result) => s.Reject(other, this, out result);
         public virtual bool TryUnifyWith(State s, Nil other, out State result) => s.Reject(other, this, out result);
-        public virtual bool TryUnifyWith(State s, Cons other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith(State s, LCons other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith<D1, D2>(State s, Cons<D1, D2> other, out State result)
+            where D1 : Term
+            where D2 : Term
+        {
+            return s.Reject(other, this, out result);
+        } 
         //public virtual State? UnifyWith<T>(State s, Cont<T> other) where T : Term => s.Reject(other, this);
         //public virtual bool TryUnifyWith(State s, Seq other, out State result) => s.Reject(other, this, out result);
 
@@ -94,8 +88,7 @@ namespace DunKanren
         public static implicit operator Term(int i) => ValueFactory.Box(i);
         public static implicit operator Term(char c) => ValueFactory.Box(c);
         public static implicit operator Term(bool b) => b ? Term.True : Term.False;
-        public static implicit operator Term(string s) => Cons.Truct(s);
-        public static implicit operator Term(char[] cs) => Cons.Literal(cs);
+        public static implicit operator Term(string s) => LCons.Truct(s);
         //public static implicit operator Term(string s) => new Seq(s.Select(x => ValueFactory.Box(x)).ToArray());
 
         #endregion

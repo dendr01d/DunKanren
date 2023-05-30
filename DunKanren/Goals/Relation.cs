@@ -6,12 +6,31 @@ using System.Threading.Tasks;
 
 namespace DunKanren.Goals
 {
-    internal abstract class Relation : Goal<Term, Term>
+    internal abstract class Relation : Goal<Term>
     {
-        public override IEnumerable<IPrintable> Components =>
-            new List<IPrintable>() { this.Argument1, this.Argument2 };
+        public override IEnumerable<IPrintable> ChildGoals => this.GetList();
 
-        protected Relation(Term arg1, Term arg2) : base(arg1, arg2) { }
+        protected Term LeftArg;
+        protected Term RightArg;
+
+        public override Stream PursueIn(State s)
+        {
+            IO.Debug_Print(this.ToString());
+
+            return base.PursueIn(s);
+        }
+
+        protected Relation(Term arg1, Term arg2) : base()
+        {
+            this.LeftArg = arg1;
+            this.RightArg = arg2;
+        }
+
+        public override IEnumerator<Term> GetEnumerator() => this.GetList().GetEnumerator();
+
+        private List<Term> GetList() => new List<Term>() { this.LeftArg, this.RightArg };
+
+        public override int Ungroundedness => LeftArg.Ungroundedness + RightArg.Ungroundedness;
     }
 
     /// <summary>
@@ -19,26 +38,24 @@ namespace DunKanren.Goals
     /// </summary>
     internal class Equality : Relation
     {
-        public override string Expression => String.Join(" == ", this.Components);
+        public override string Expression => $"{this.LeftArg} ≡ {this.RightArg}";
         public override string Description => "The following terms are equivalent";
 
-        public Equality(Term arg1, Term arg2) : base(arg1, arg2) { }
+        public Equality(Term lhs, Term rhs) : base(lhs, rhs) { }
 
-        public override Goal<Term, Term> Negate()
+        public override Goal<Term> Negate()
         {
-            return new Disequality(this.Argument1, this.Argument2);
+            return new Disequality(this.LeftArg, this.RightArg);
         }
 
-        protected override Stream ApplyToState(State s, Term arg1, Term arg2)
+        protected override Stream Application(State s)
         {
-            if (s.TryUnify(arg1, arg2, out State output))
+            if (s.TryUnify(this.LeftArg, this.RightArg, out State result))
             {
-                return Stream.Singleton(output);
+                return Stream.Singleton(result);
             }
-            else
-            {
-                return Stream.Empty();
-            }
+
+            return Stream.Empty();
         }
     }
 
@@ -47,25 +64,24 @@ namespace DunKanren.Goals
     /// </summary>
     internal class Disequality : Relation
     {
-        public override string Expression => String.Join(" != ", this.Components);
+        public override string Expression => String.Join(" != ", this.ChildGoals);
         public override string Description => "The following terms are NOT equivalent";
 
-        public Disequality(Term arg1, Term arg2) : base(arg1, arg2) { }
+        public Disequality(Term lhs, Term rhs) : base(lhs, rhs) { }
 
-        public override Goal<Term, Term> Negate()
+        public override Goal Negate()
         {
-            return new Equality(this.Argument1, this.Argument2);
+            return new Equality(this.LeftArg, this.RightArg);
         }
 
-        protected override Stream ApplyToState(State s, Term arg1, Term arg2)
+        protected override Stream Application(State s)
         {
-            if (s.TryDisUnify(arg1, arg2, out State output))
+            if (s.TryDisUnify(this.LeftArg, this.RightArg, out State result))
             {
-                return Stream.Singleton(output);
+                return Stream.Singleton(result);
             }
-            else
-            {
-                return Stream.Empty();
-            }
+
+            return Stream.Empty();
         }
-    }}
+    }
+}

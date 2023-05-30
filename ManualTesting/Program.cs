@@ -4,49 +4,31 @@ namespace DunKanren
 {
     internal class Program
     {
-        static Goal Splito(Term coll, Term head, Term tail)
-        {
-            //return new Conjoint()
-            //{
-            //    coll != Term.nil,
-            //    head != Term.nil,
-            //    coll == Cons.Truct(head, tail)
-            //};
-            return Conso(head, tail, coll);
-        }
-
         static Goal Conso(Term car, Term cdr, Term cons)
         {
-            return new Conjoint()
+            return new Conj()
             {
-                cons != Term.nil,
-                Cons.Truct(car, cdr) == cons
+                cons != Term.NIL,
+                LCons.Truct(car, cdr) == cons
             };
         }
 
         static Goal Appendo(Term a, Term b, Term c)
         {
-            return new Disjoint()
+            return new Disj()
             {
-                new Conjoint()
+                new Conj()
                 {
-                    a == Term.nil,
+                    a == Term.NIL,
                     b == c
                 },
-                new Conjoint()
+                new Conj()
                 {
-                    //new NormalDisjunctive()
-                    //{
-                    //    { a == Term.nil, b == Term.nil, c == Term.nil },
-                    //    { c != Term.nil, new Disjunction(a != Term.nil, b != Term.nil) }
-                    //},
-                    new CallFresh((first, aRest, cRest) => new Conjoint()
+                    //c != Term.NIL,
+                    new CallFresh((first, aRest, cRest) => new Conj()
                     {
-                        first != Term.nil,
-                        a != Term.nil,
-                        c != Term.nil,
-                        Conso(first, aRest, a),
-                        Conso(first, cRest, c),
+                        LCons.Truct(first, aRest) == a,
+                        LCons.Truct(first, cRest) == c,
                         Appendo(aRest, b, cRest)
                     })
                 }
@@ -79,10 +61,10 @@ namespace DunKanren
 
         static Goal Membero(Term a, Term coll)
         {
-            return new CallFresh((first, rest) => new Conjoint()
+            return new CallFresh((first, rest) => new Conj()
             {
-                Splito(coll, first, rest),
-                new Disjoint()
+                Conso(first, rest, coll),
+                new Disj()
                 {
                     a == first,
                     Membero(a, rest)
@@ -95,88 +77,88 @@ namespace DunKanren
             return Membero(a, coll).Negate();
         }
 
-        static Goal Removeo(Term x, Term collA, Term collB)
-        {
-            return new Disjoint()
-            {
-                new Conjoint()
-                {
-                    collA == Term.nil,
-                    collB == Term.nil
-                },
-                new CallFresh((firstA, restA, firstB, restB) => new Conjoint()
-                {
-                    Splito(collA, firstA, restA),
-                    Splito(collB, firstB, restB),
-                    x != firstB,
-                    new NormalDisjunctive()
-                    {
-                        { x == firstA, firstA != firstB, Removeo(x, restA, collB) },
-                        { x != firstA, firstA == firstB, Removeo(x, restA, restB) }
-                    }
-                })
-            };
-        }
+        //static Goal Removeo(Term x, Term collA, Term collB)
+        //{
+        //    return new Disjoint()
+        //    {
+        //        new Conjoint()
+        //        {
+        //            collA == Term.nil,
+        //            collB == Term.nil
+        //        },
+        //        new CallFresh((firstA, restA, firstB, restB) => new Conjoint()
+        //        {
+        //            Splito(collA, firstA, restA),
+        //            Splito(collB, firstB, restB),
+        //            x != firstB,
+        //            new NormalDisjunctive()
+        //            {
+        //                { x == firstA, firstA != firstB, Removeo(x, restA, collB) },
+        //                { x != firstA, firstA == firstB, Removeo(x, restA, restB) }
+        //            }
+        //        })
+        //    };
+        //}
 
-        static Goal Distincto(Term coll)
-        {
-            return new Disjoint()
-            {
-                coll == Term.nil,
-                new CallFresh((first, rest) => new Conjoint()
-                {
-                    Splito(coll, first, rest),
-                    NotMembero(first, rest),
-                    Distincto(rest)
-                })
-            };
-        }
+        //static Goal Distincto(Term coll)
+        //{
+        //    return new Disjoint()
+        //    {
+        //        coll == Term.nil,
+        //        new CallFresh((first, rest) => new Conjoint()
+        //        {
+        //            Splito(coll, first, rest),
+        //            NotMembero(first, rest),
+        //            Distincto(rest)
+        //        })
+        //    };
+        //}
 
-        static Goal Uniqueo(Term coll)
-        {
-            return new Disjoint()
-            {
-                coll == Term.nil,
-                new CallFresh((first, rest) => new Conjoint()
-                {
-                    Splito(coll, first, rest),
-                    NotMembero(first, rest),
-                    Uniqueo(rest)
-                })
-            };
-        }
+        //static Goal Uniqueo(Term coll)
+        //{
+        //    return new Disjoint()
+        //    {
+        //        coll == Term.nil,
+        //        new CallFresh((first, rest) => new Conjoint()
+        //        {
+        //            Splito(coll, first, rest),
+        //            NotMembero(first, rest),
+        //            Uniqueo(rest)
+        //        })
+        //    };
+        //}
 
-        static Goal Bijecto(Term collA, Term collB)
-        {
-            return new Conjoint()
-            {
-                Uniqueo(collA),
-                Uniqueo(collB),
-                new Disjoint()
-                {
-                    new Conjoint()
-                    {
-                        collA == Term.nil,
-                        collB == Term.nil
-                    },
-                    new CallFresh((firstA, restA, firstB, restB) => new Conjoint()
-                    {
-                        Splito(collA, firstA, restA),
-                        Splito(collB, firstB, restB),
-                        new Disjoint()
-                        {
-                            firstA == firstB,
-                            new Conjoint()
-                            {
-                                Membero(firstA, restB),
-                                Membero(firstB, restA)
-                            }
-                        },
-                        Bijecto(restA, restB)
-                    })
-                }
-            };
-        }
+        //static Goal Bijecto(Term collA, Term collB)
+        //{
+        //    return new Conjoint()
+        //    {
+        //        Uniqueo(collA),
+        //        Uniqueo(collB),
+        //        new Disjoint()
+        //        {
+        //            new Conjoint()
+        //            {
+        //                collA == Term.nil,
+        //                collB == Term.nil
+        //            },
+        //            new CallFresh((firstA, restA, firstB, restB) => new Conjoint()
+        //            {
+        //                Splito(collA, firstA, restA),
+        //                Splito(collB, firstB, restB),
+        //                new Disjoint()
+        //                {
+        //                    firstA == firstB,
+        //                    new Conjoint()
+        //                    {
+        //                        Membero(firstA, restB),
+        //                        Membero(firstB, restA)
+        //                    }
+        //                },
+        //                Bijecto(restA, restB)
+        //            })
+        //        }
+        //    };
+        //}
 
         //static Goal Bijecto (Term collA, Term collB)
         //{
@@ -223,28 +205,28 @@ namespace DunKanren
         // h e l l o 'n
         // o l l e h 'n
 
-        static Goal Reverseo(Term collA, Term collB)
-        {
-            static Goal helper(Term coll_a, Term coll_b, Term mem)
-            {
-                return new Disjoint()
-                {
-                    new Conjoint()
-                    {
-                        coll_a == Term.nil,
-                        coll_b == mem
-                    },
-                    new CallFresh((firstA, restA, newB) => new Conjoint()
-                    {
-                        Splito(coll_a, firstA, restA),
-                        newB == Cons.Truct(firstA, mem),
-                        helper(restA, coll_b, newB)
-                    })
-                };
-            }
+        //static Goal Reverseo(Term collA, Term collB)
+        //{
+        //    static Goal helper(Term coll_a, Term coll_b, Term mem)
+        //    {
+        //        return new Disjoint()
+        //        {
+        //            new Conjoint()
+        //            {
+        //                coll_a == Term.nil,
+        //                coll_b == mem
+        //            },
+        //            new CallFresh((firstA, restA, newB) => new Conjoint()
+        //            {
+        //                Splito(coll_a, firstA, restA),
+        //                newB == Cons.Truct(firstA, mem),
+        //                helper(restA, coll_b, newB)
+        //            })
+        //        };
+        //    }
 
-            return helper(collA, collB, Term.nil);
-        }
+        //    return helper(collA, collB, Term.nil);
+        //}
 
         //static Goal Puzzle()
         //{
@@ -473,7 +455,10 @@ namespace DunKanren
 
             //Goal g = new CallFresh((x, y) => Appendo(x, y, "abc"));
 
-            Goal g = new CallFresh((x, y, z, w) => new Conjunction(Appendo(x, y, z), Appendo(z, w, "abcd")));
+            Goal g = new CallFresh((x, y, z, w) => new Conj() {
+                Appendo(x, y, z),
+                Appendo(z, w, "abcd")
+            });
 
             Console.WriteLine("Sphinx of black quartz! Judge my vow:");
             Console.WriteLine();
