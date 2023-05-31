@@ -15,7 +15,7 @@ namespace DunKanren
         public static readonly Value<bool> True = new(true);
         public static readonly Value<bool> False = new(false);
 
-        public static readonly Nil nil = new();
+        public static readonly Nil NIL = new();
 
         public virtual Term Dereference(State s) => this;
 
@@ -26,22 +26,44 @@ namespace DunKanren
         public virtual bool SameAs(State s, Variable other) => false;
         public virtual bool SameAs<D>(State s, Variable<D> other) => false;
         public virtual bool SameAs<D>(State s, Value<D> other) => false;
+        public virtual bool SameAs(State s, Number other) => false;
         public virtual bool SameAs(State s, Nil other) => false;
-        public virtual bool SameAs(State s, Cons other) => false;
+        public virtual bool SameAs(State s, LCons other) => false;
+        public virtual bool SameAs<D1, D2>(State s, Cons<D1, D2> other) where D1 : Term where D2 : Term => false;
         //public virtual bool SameAs<T>(State s, Cont<T> other) where T : Term => false;
+        //public virtual bool SameAs(State s, Seq other) => false;
+
+        //A term is concrete if it has a definite value regardless of contextual state.
+        //Variables are never concrete
+        //A cons is concrete if it contains no variables within its entire tree.
+        //Everything else is concrete.
+
+        public virtual int Ungroundedness { get; } = 0;
 
         #endregion
 
 
         #region Unification
-        public abstract State? UnifyWith(State s, Term other);
+        public abstract bool TryUnifyWith(State s, Term other, out State result);
 
-        public virtual State? UnifyWith(State s, Variable other) => other.SameAs(s, this) ? s.Affirm(other, this) : s.Extend(other, this);
-        public virtual State? UnifyWith<D>(State s, Variable<D> other) => s.Reject(other, this);
-        public virtual State? UnifyWith<D>(State s, Value<D> other) => s.Reject(other, this);
-        public virtual State? UnifyWith(State s, Nil other) => s.Reject(other, this);
-        public virtual State? UnifyWith(State s, Cons other) => s.Reject(other, this);
+        public virtual bool TryUnifyWith(State s, Variable other, out State result) =>
+            other.SameAs(s, this)
+            ? s.Affirm(other, this, out result)
+            : s.TryExtend(other, this, out result);
+        public virtual bool TryUnifyWith<D>(State s, Variable<D> other, out State result) => s.Reject(other, this, out result);
+
+        public virtual bool TryUnifyWith<D>(State s, Value<D> other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith(State s, Number other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith(State s, Nil other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith(State s, LCons other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith<D1, D2>(State s, Cons<D1, D2> other, out State result)
+            where D1 : Term
+            where D2 : Term
+        {
+            return s.Reject(other, this, out result);
+        } 
         //public virtual State? UnifyWith<T>(State s, Cont<T> other) where T : Term => s.Reject(other, this);
+        //public virtual bool TryUnifyWith(State s, Seq other, out State result) => s.Reject(other, this, out result);
 
         #endregion
 
@@ -51,7 +73,12 @@ namespace DunKanren
         public virtual string ToVerboseString() => this.ToString();
 
         public IEnumerable<string> ToTree() => this.ToTree("", true, false);
-        public virtual IEnumerable<string> ToTree(string prefix, bool first, bool last) => new string[] { prefix + this.ToString() };
+        public virtual IEnumerable<string> ToTree(string prefix, bool first, bool last) => new string[]
+        {
+            last
+            ? prefix + IO.LEAVES + this.ToString()
+            : prefix + IO.BRANCH + this.ToString()
+        };
 
 
         public override bool Equals(object? obj) => ReferenceEquals(obj, this);
@@ -61,18 +88,21 @@ namespace DunKanren
 
         #region Implicit Conversions
 
-        public static implicit operator Term(int i) => ValueFactory.Box(i);
+        public static implicit operator Term(int i) => new Number(i);
+        public static implicit operator Term(double d) => new Number(d);
+        public static implicit operator Term((int, int) ii) => new Number(ii.Item1, ii.Item2);
+
         public static implicit operator Term(char c) => ValueFactory.Box(c);
         public static implicit operator Term(bool b) => b ? Term.True : Term.False;
-        //public static implicit operator Term(string s) => Cons.Truct(s);
-        public static implicit operator Term(string s) => Cons.Truct(s);
+        public static implicit operator Term(string s) => LCons.Truct(s);
+        //public static implicit operator Term(string s) => new Seq(s.Select(x => ValueFactory.Box(x)).ToArray());
 
         #endregion
 
         #region Operator Overloads
 
-        public static Goal operator ==(Term left, Term right) => Goal.Equality(left, right);
-        public static Goal operator !=(Term left, Term right) => Goal.Disequality(left, right);
+        public static Goals.Goal operator ==(Term left, Term right) => new Goals.Equality(left, right);
+        public static Goals.Goal operator !=(Term left, Term right) => new Goals.Disequality(left, right);
 
         #endregion
     }
