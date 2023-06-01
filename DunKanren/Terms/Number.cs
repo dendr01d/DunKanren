@@ -72,11 +72,6 @@ namespace DunKanren
             this.Denominator = denom;
         }
 
-        public static Term Prec(Number n)
-        {
-            return new Number(n);
-        }
-
         //-------------------------
 
         //simplify the number's internal fraction as much as possible
