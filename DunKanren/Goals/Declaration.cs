@@ -85,7 +85,7 @@ namespace DunKanren.Goals
                 this.DynamicExpression = $"ƒ({String.Join(", ", this.VariableNames)})";
                 this.DynamicDescription = $"Lambda on ({String.Join(", ", this.VariableNames)})";
 
-                return newGoal.PursueIn(newState);
+                return newGoal.PursueIn(newState.Next());
             };
         }
 
