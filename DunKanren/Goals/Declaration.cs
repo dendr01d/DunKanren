@@ -10,7 +10,7 @@ namespace DunKanren.Goals
     {
         public override string Expression => $"£ ({String.Join(", ", this.VariableNames)})";
         public override string Description => $"There exist variables ({String.Join(", ", this.VariableNames)})";
-        public override IEnumerable<IPrintable> ChildGoals => Array.Empty<IPrintable>();
+        public override IEnumerable<IPrintable> SubExpressions => Array.Empty<IPrintable>();
 
         public readonly string[] VariableNames;
 
@@ -30,21 +30,20 @@ namespace DunKanren.Goals
     /// </summary>
     public sealed class Fresh : Declaration
     {
-
         public Fresh(params string[] newVars) : base(newVars) { }
 
         public Fresh(IEnumerable<System.Reflection.ParameterInfo> newVars) : base(newVars) { }
 
-        protected override Stream Application(State s)
+        internal override Func<State, Stream> GetApp()
         {
-            s.DeclareVars(out State newState, this.VariableNames);
-            return Stream.Singleton(newState);
+            return (State s) =>
+            {
+                s.DeclareVars(out State newState, this.VariableNames);
+                return Stream.Singleton(newState);
+            };
         }
 
-        public override Goal Negate()
-        {
-            return new Top();
-        }
+        internal override Func<State, Stream> GetNeg() => new Bottom().GetApp();
 
         public override int Ungroundedness => this.VariableNames.Length;
     }
@@ -53,23 +52,13 @@ namespace DunKanren.Goals
     {
         public override string Expression => this.DynamicExpression;
         public override string Description => this.DynamicDescription;
-        public override IEnumerable<IPrintable> ChildGoals => this.DynamicChild;
+        public override IEnumerable<IPrintable> SubExpressions => this.DynamicChild;
 
         private string DynamicExpression;
         private string DynamicDescription;
         private IEnumerable<IPrintable> DynamicChild = Array.Empty<IPrintable>();
 
-        private Func<State, Stream> ApplicationFunc;
-
-        protected override Stream Application(State s)
-        {
-            return this.ApplicationFunc(s);
-        }
-
-        public override Goal Negate()
-        {
-            return new Top();
-        }
+        private Func<Variable[], Goal> Constructor;
 
         private CallFresh(System.Reflection.MethodInfo body, Func<Variable[], Goal> constructor) : base(body.GetParameters())
         {
@@ -77,10 +66,15 @@ namespace DunKanren.Goals
             this.DynamicExpression = $"ƒ(?)";
             this.DynamicDescription = $"Unevaluated Lambda";
 
-            this.ApplicationFunc = (State s) =>
+            this.Constructor = constructor;
+        }
+
+        internal override Func<State, Stream> GetApp()
+        {
+            return (State s) =>
             {
                 Variable[] newVars = s.DeclareVars(out State newState, this.VariableNames);
-                Goal newGoal = constructor(newVars);
+                Goal newGoal = Constructor(newVars);
 
                 this.DynamicExpression = $"ƒ({String.Join(", ", this.VariableNames)})";
                 this.DynamicDescription = $"Lambda on ({String.Join(", ", this.VariableNames)})";
@@ -88,6 +82,8 @@ namespace DunKanren.Goals
                 return newGoal.PursueIn(newState.Next());
             };
         }
+
+        internal override Func<State, Stream> GetNeg() => new Bottom().GetApp();
 
         public CallFresh(Func<Goal> lambda) :
             this(lambda.Method, (v) => lambda())

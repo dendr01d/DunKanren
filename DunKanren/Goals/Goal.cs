@@ -11,21 +11,17 @@ namespace DunKanren.Goals
     {
         public abstract string Description { get; }
         public abstract string Expression { get; }
-        public abstract IEnumerable<IPrintable> ChildGoals { get; }
+        public abstract IEnumerable<IPrintable> SubExpressions { get; }
 
-        public virtual Stream PursueIn(State s)
-        {
-            return this.Application(s);
-        }
-        protected abstract Stream Application(State s);
-        public Stream Pursue() => this.Application(State.InitialState());
-        public abstract Goal Negate();
+        public Stream Pursue() => this.GetApp()(State.InitialState());
+        public virtual Stream PursueIn(State s) => this.GetApp()(s);
+        public virtual Stream NegateIn(State s) => this.GetNeg()(s);
+
+        internal abstract Func<State, Stream> GetApp();
+        internal abstract Func<State, Stream> GetNeg();
 
         public override string ToString() => $"({this.Expression})";
         public string ToVerboseString() => this.Description;
-
-        //public virtual Goal Resolve() => this;
-        //public virtual bool? LogicalDeterminate => null;
 
         public IEnumerable<string> ToTree() => ToTree("", true, false);
         public IEnumerable<string> ToTree(string prefix, bool first, bool last)
@@ -33,11 +29,11 @@ namespace DunKanren.Goals
             string parentPrefix = first ? "" : prefix + (last ? IO.LEAVES : IO.BRANCH);
             string childPrefix = first ? "" : prefix + (last ? IO.SPACER : IO.JUMPER);
 
-            yield return parentPrefix + (this.ChildGoals.Any() ? IO.HEADER : IO.ALONER) + this.Description;
+            yield return parentPrefix + (this.SubExpressions.Any() ? IO.HEADER : IO.ALONER) + this.Description;
 
-            if (this.ChildGoals.Any())
+            if (this.SubExpressions.Any())
             {
-                foreach (var comp in this.ChildGoals.SkipLast(1))
+                foreach (var comp in this.SubExpressions.SkipLast(1))
                 {
                     foreach (string line in comp.ToTree(childPrefix, false, false))
                     {
@@ -45,7 +41,7 @@ namespace DunKanren.Goals
                     }
                 }
 
-                foreach (string line in this.ChildGoals.Last().ToTree(childPrefix, false, true))
+                foreach (string line in this.SubExpressions.Last().ToTree(childPrefix, false, true))
                 {
                     yield return line;
                 }
@@ -87,19 +83,19 @@ namespace DunKanren.Goals
 
         public static int Compare(Goal g1, Goal g2)
         {
-            if (Priority.IndexOf(g1.GetType()) is int p1
-                && Priority.IndexOf(g2.GetType()) is int p2
-                && p1 != p2)
-            {
-                return p1.CompareTo(p2);
-            }
+            //if (Priority.IndexOf(g1.GetType()) is int p1
+            //    && Priority.IndexOf(g2.GetType()) is int p2
+            //    && p1 != p2)
+            //{
+            //    return p1.CompareTo(p2);
+            //}
 
             return g1.Ungroundedness.CompareTo(g2.Ungroundedness);
         }
 
         public static Goal NOT(Goal g)
         {
-            return g.Negate();
+            return new Not(g);
         }
 
         public static Goal AND(Goal g1, Goal g2)
@@ -114,7 +110,7 @@ namespace DunKanren.Goals
 
         public static Goal IMPL(Goal g1, Goal g2)
         {
-            return new Disj(g1.Negate(), g2);
+            return new Disj(NOT(g1), g2);
         }
 
         public static Goal BIMP(Goal g1, Goal g2)
@@ -124,7 +120,7 @@ namespace DunKanren.Goals
 
         public static Goal XOR(Goal g1, Goal g2)
         {
-            return AND(OR(g1, g2), AND(g1, g2).Negate());
+            return AND(OR(g1, g2), NOT(AND(g1, g2)));
         }
     }
 
@@ -135,10 +131,10 @@ namespace DunKanren.Goals
     {
         public override string Expression => "TRUE";
         public override string Description => this.Expression;
-        public override IEnumerable<IPrintable> ChildGoals => Array.Empty<IPrintable>();
-        protected override Stream Application(State s) => Stream.Singleton(s);
-        public override Goal Negate() => new Bottom();
-        //public override bool? LogicalDeterminate => true;
+        public override IEnumerable<IPrintable> SubExpressions => Array.Empty<IPrintable>();
+
+        internal override Func<State, Stream> GetApp() => (State s) => Stream.Singleton(s);
+        internal override Func<State, Stream> GetNeg() => (State s) => Stream.Empty();
 
         public override int Ungroundedness => 0;
     }
@@ -150,10 +146,10 @@ namespace DunKanren.Goals
     {
         public override string Expression => "FALSE";
         public override string Description => this.Expression;
-        public override IEnumerable<IPrintable> ChildGoals => Array.Empty<IPrintable>();
-        protected override Stream Application(State s) => Stream.Empty();
-        public override Goal Negate() => new Top();
-        //public override bool? LogicalDeterminate => false;
+        public override IEnumerable<IPrintable> SubExpressions => Array.Empty<IPrintable>();
+
+        internal override Func<State, Stream> GetApp() => (State s) => Stream.Empty();
+        internal override Func<State, Stream> GetNeg() => (State s) => Stream.Singleton(s);
 
         public override int Ungroundedness => 0;
     }
@@ -162,14 +158,17 @@ namespace DunKanren.Goals
     {
         public override string Expression => $"!({this.Original})";
         public override string Description => "The following statement is NOT true";
-        public override IEnumerable<IPrintable> ChildGoals => new IPrintable[] { this.Original };
-        private readonly Goal Original;
+        public override IEnumerable<IPrintable> SubExpressions => new IPrintable[] { this.Original };
+
+        private Goal Original;
+
         public Not(Goal g)
         {
-            this.Original = g;//.Resolve();
+            this.Original = g;
         }
-        protected override Stream Application(State s) => this.Original.Negate().PursueIn(s);
-        public override Goal Negate() => this.Original;
+
+        internal override Func<State, Stream> GetApp() => this.Original.GetNeg();
+        internal override Func<State, Stream> GetNeg() => this.Original.GetApp();
 
         public override int Ungroundedness => this.Original.Ungroundedness;
     }
@@ -179,10 +178,22 @@ namespace DunKanren.Goals
     /// and the final goal is assembled via some combination of these arguments
     /// </summary>
     public abstract class Goal<T> : Goal, IEnumerable<T>
-        where T : IPrintable
+        where T : class, IPrintable
     {
-        public abstract IEnumerator<T> GetEnumerator();
+        protected List<Lazy<T>> Subs;
+        public override IEnumerable<IPrintable> SubExpressions => this.Subs.Select(x => x.Value);
 
+        protected Goal()
+        {
+            this.Subs = new();
+        }
+
+        protected Goal(params T[] subs)
+        {
+            this.Subs = subs.Select(x => new Lazy<T>(() => x)).ToList();
+        }
+
+        public virtual IEnumerator<T> GetEnumerator() => this.Subs.Select(x => x.Value).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
     }
 

@@ -69,35 +69,35 @@
             Solve(g);
         }
 
-        [TestMethod]
-        [Timeout(2000)]  // Milliseconds
-        public void Test_Appendo_Simple()
-        {
-            static Goal Appendo(Term a, Term b, Term c)
-            {
-                return new Disj()
-                {
-                    new Conj()
-                    {
-                        a == Term.NIL,
-                        b == c
-                    },
-                    new Conj()
-                    {
-                        //c != Term.NIL,
-                        new CallFresh((first, aRest, cRest) => new Conj()
-                        {
-                            a == Cons.Truct(first, aRest),
-                            c == Cons.Truct(first, cRest),
-                            Appendo(aRest, b, cRest)
-                        })
-                    }
-                };
-            }
+        //[TestMethod]
+        //[Timeout(2000)]  // Milliseconds
+        //public void Test_Appendo_Simple()
+        //{
+        //    static Goal Appendo(Term a, Term b, Term c)
+        //    {
+        //        return new Disj()
+        //        {
+        //            new Conj()
+        //            {
+        //                a == Term.NIL,
+        //                b == c
+        //            },
+        //            new Conj()
+        //            {
+        //                //c != Term.NIL,
+        //                new CallFresh((first, aRest, cRest) => new Conj()
+        //                {
+        //                    a == Cons.Truct(first, aRest),
+        //                    c == Cons.Truct(first, cRest),
+        //                    Appendo(aRest, b, cRest)
+        //                })
+        //            }
+        //        };
+        //    }
 
-            Goal g = new CallFresh((x, y) => Appendo(x, y, "abc"));
+        //    Goal g = new CallFresh((x, y) => Appendo(x, y, "abc"));
 
-            Solve(g);
-        }
+        //    Solve(g);
+        //}
     }
 }

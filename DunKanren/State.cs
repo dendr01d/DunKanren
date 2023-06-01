@@ -63,6 +63,25 @@ namespace DunKanren
             return t.Dereference(this);
         }
 
+        public Term Reify(Term original, ref List<Term> constraints, Term? stepped = null)
+        {
+            Term currentTerm = stepped ?? original;
+
+            if (currentTerm is Variable v && !v.Equals(null) && this.Negs.TryGetValue(v, out var negs))
+            {
+                constraints.AddRange(negs);
+                constraints = constraints.Distinct().ToList();
+            }
+
+            Term step = original.Dereference(this);
+            if (!step.Equals(currentTerm) && !step.Equals(original))
+            {
+                return Reify(step, ref constraints);
+            }
+
+            return original;
+        }
+
         public bool TryUnify(Term u, Term v, out State result)
         {
             IO.Debug_Print(u.ToString() + " EQ? " + v.ToString());
@@ -138,7 +157,7 @@ namespace DunKanren
         {
             result = this;
             IO.Debug_Print(u.ToString() + " EQL " + v.ToString() + " in " + result.ToString());
-            return true;            
+            return true;
         }
 
         public bool Reject(Term u, Term v, out State result)
@@ -205,6 +224,21 @@ namespace DunKanren
                 output.Negs[pair.Key].Add(pair.Value);
             }
 
+            Dictionary<Variable, Term> moreNegs = new();
+
+            foreach(Variable negKey in newNegs.Keys)
+            {
+                foreach (Variable subKey in prev.Subs.Where(x => x.Value.Equals(negKey)).Select(x => x.Key))
+                {
+                    moreNegs[subKey] = newNegs[negKey];
+                }
+            }
+            
+            if (moreNegs.Any())
+            {
+                return ConstrainValues(prev, moreNegs);
+            }
+
             return output;
         }
 
@@ -229,19 +263,20 @@ namespace DunKanren
             StringBuilder sb = new();
             sb.AppendLine(this.GetName());
 
+            int varPadding = this.Subs.Keys.Max(x => x.Symbol.Length);
+
             foreach (var pair in this.Subs.OrderBy(x => x.Key))
             {
+                //List<Term> constraints = new();
+                //Term reified = this.Reify(pair.Key, ref constraints);
+
                 sb.Append('\t');
-                sb.Append(pair.Key.ToString());
+                sb.Append(pair.Key.Symbol.PadLeft(varPadding));
                 sb.Append(" => ");
-                sb.Append(pair.Value?.Dereference(this).ToString() ?? "()");
-                if (this.Negs.TryGetValue(pair.Key, out HashSet<Term>? nots) && nots != null)
-                {
-                    sb.Append(" NOT (");
-                    sb.Append(String.Join(", ", nots));
-                    sb.Append(')');
-                }
-                sb.AppendLine("; ");
+                sb.Append(pair.Value);
+                //if (!reified.Equals(pair.Value)) sb.Append($" (-> {reified})");
+                //if (constraints.Any()) sb.Append($" ¬({String.Join(", ", constraints)})");
+                sb.AppendLine();
             }
 
             return sb.ToString();
@@ -252,19 +287,20 @@ namespace DunKanren
             StringBuilder sb = new();
             sb.AppendLine(this.GetName());
 
+            int varPadding = this.Subs.Keys.Max(x => x.Symbol.Length);
+
             foreach (var pair in this.Subs.Where(x => x.Key.RecursionLevel <= level).OrderBy(x => x.Key))
             {
+                //List<Term> constraints = new();
+                //Term reified = this.Reify(pair.Key, ref constraints);
+
                 sb.Append('\t');
-                sb.Append(pair.Key.ToString());
+                sb.Append(pair.Key.Symbol.PadLeft(varPadding));
                 sb.Append(" => ");
-                sb.Append(pair.Value?.Dereference(this).ToString() ?? "Any_");
-                if (this.Negs.TryGetValue(pair.Key, out HashSet<Term>? nots) && nots != null)
-                {
-                    sb.Append(" ¬(");
-                    sb.Append(String.Join(", ", nots));
-                    sb.Append(')');
-                }
-                sb.AppendLine("; ");
+                sb.Append(pair.Value);
+                //if (!reified.Equals(pair.Value)) sb.Append($" (-> {reified})");
+                //if (constraints.Any()) sb.Append($" ¬({String.Join(", ", constraints)})");
+                sb.AppendLine();
             }
 
             return sb.ToString();

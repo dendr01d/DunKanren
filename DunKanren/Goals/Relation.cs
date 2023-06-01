@@ -8,15 +8,11 @@ namespace DunKanren.Goals
 {
     internal abstract class Relation : Goal<Term>
     {
-        public override IEnumerable<IPrintable> ChildGoals => this.GetList();
-
         protected Term LeftArg;
         protected Term RightArg;
 
         public override Stream PursueIn(State s)
         {
-            IO.Debug_Print(this.ToString());
-
             return base.PursueIn(s);
         }
 
@@ -30,7 +26,7 @@ namespace DunKanren.Goals
 
         private List<Term> GetList() => new List<Term>() { this.LeftArg, this.RightArg };
 
-        public override int Ungroundedness => LeftArg.Ungroundedness + RightArg.Ungroundedness;
+        public override int Ungroundedness => int.Min(LeftArg.Ungroundedness, RightArg.Ungroundedness);
     }
 
     /// <summary>
@@ -43,18 +39,15 @@ namespace DunKanren.Goals
 
         public Equality(Term lhs, Term rhs) : base(lhs, rhs) { }
 
-        public override Goal<Term> Negate()
-        {
-            return new Disequality(this.LeftArg, this.RightArg);
-        }
+        internal override Func<State, Stream> GetApp() => (State s) => Equality.Assert(s, this.LeftArg, this.RightArg);
+        internal override Func<State, Stream> GetNeg() => (State s) => Disequality.Assert(s, this.LeftArg, this.RightArg);
 
-        protected override Stream Application(State s)
+        public static Stream Assert(State s, Term left, Term right)
         {
-            if (s.TryUnify(this.LeftArg, this.RightArg, out State result))
+            if (s.TryUnify(left, right, out State result))
             {
                 return Stream.Singleton(result);
             }
-
             return Stream.Empty();
         }
     }
@@ -64,23 +57,20 @@ namespace DunKanren.Goals
     /// </summary>
     internal class Disequality : Relation
     {
-        public override string Expression => String.Join(" != ", this.ChildGoals);
+        public override string Expression => String.Join(" != ", this.SubExpressions);
         public override string Description => "The following terms are NOT equivalent";
 
         public Disequality(Term lhs, Term rhs) : base(lhs, rhs) { }
 
-        public override Goal Negate()
-        {
-            return new Equality(this.LeftArg, this.RightArg);
-        }
+        internal override Func<State, Stream> GetApp() => (State s) => Disequality.Assert(s, this.LeftArg, this.RightArg);
+        internal override Func<State, Stream> GetNeg() => (State s) => Equality.Assert(s, this.LeftArg, this.RightArg);
 
-        protected override Stream Application(State s)
+        public static Stream Assert(State s, Term left, Term right)
         {
-            if (s.TryDisUnify(this.LeftArg, this.RightArg, out State result))
+            if (s.TryDisUnify(left, right, out State result))
             {
                 return Stream.Singleton(result);
             }
-
             return Stream.Empty();
         }
     }

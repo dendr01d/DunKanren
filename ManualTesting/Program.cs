@@ -8,7 +8,10 @@ namespace DunKanren
         {
             return new Conj()
             {
-                LCons.Truct(car, cdr) == cons
+                LCons.Truct(car, cdr) == cons,
+                //(cons is LCons ? new Top() : new Bottom()),
+                //((cons as LCons)?.Car ?? Term.NIL) == car,
+                //((cons as LCons)?.Cdr ?? Term.NIL) == cdr,
             };
         }
 
@@ -36,12 +39,30 @@ namespace DunKanren
 
         static Goal Membero(Term a, Term coll)
         {
-            return new CallFresh((first, rest) => new Conj(Conso(first, rest, coll), coll != Term.NIL, first != Term.NIL, Goal.OR(a == first, Membero(a, rest))));
+            return new CallFresh((first, rest) => new Conj()
+            {
+                Conso(first, rest, coll),
+                new Disj()
+                {
+                    Membero(a, rest),
+                    a == first,
+                }
+            });
         }
 
         static Goal NotMembero(Term a, Term coll)
         {
-            return Membero(a, coll).Negate();
+            return new Disj()
+            {
+                coll == Term.NIL,
+                new CallFresh((first, rest) => new Conj()
+                {
+                    Conso(first, rest, coll),
+                    first != a,
+                    first != Term.NIL,
+                    NotMembero(a, rest)
+                })
+            };
         }
 
         static Goal Removeo(Term r, Term collFull, Term collPrun)
@@ -324,51 +345,7 @@ namespace DunKanren
         //            })));
         //}
 
-        private struct Person
-        {
-            public enum Name { Alice, Husband, Son, Daughter, Brother };
-            public enum KillerStatus { Killer, Victim, Bystander };
-            public enum Location { Beach, Bar, Elsewhere };
-            public enum Sex { Man, Woman };
 
-            public Name Identity;
-            public Name Sibling;
-            public bool Twins;
-            public Location Place;
-            public Sex Gender;
-            public KillerStatus Role;
-
-            public Person (Name id, Name sib, bool twins, Location pl, KillerStatus role)
-            {
-                this.Identity = id;
-                this.Sibling = sib;
-                this.Twins = twins;
-                this.Place = pl;
-                this.Role = role;
-            }
-        }
-
-        /*
-         Alice, Husband, Son, Daughter, Brother
-         Exactly one of these people is a killer
-         one of these people is a victim
-         two of these people are twins (either alice/brother or son/daughter)
-         each person was at a given location (bar, beach, elsewhere)
-         each person is one of two genders
-
-        relations:
-         together (implies location was the same
-         twins (implies neither is younger than the other)
-         younger-than
-
-        all of these things are true:
-        1. two people were at the bar. one is a man, one is a woman
-        2. two people were together at the beach. one is the victim, one is the killer
-        3. one of son or daughter was elsehwere, alone
-        4. alice's location isn't the same as husband's location
-        5. the victim and killer were not twins
-        6. the killer was younger than the victim
-         */
         //https://leanprover.github.io/logic_and_proof/propositional_logic.html
         public static Goal MurderPuzzle()
         {
@@ -416,8 +393,6 @@ namespace DunKanren
 
         static void Main()
         {
-
-
             //Goal g = MurderPuzzle();
 
             //Goal g = new CallFresh((x, y) => new Conj(x == 5, y == 6));
@@ -431,7 +406,13 @@ namespace DunKanren
 
             //Goal g = new CallFresh(x => Bijecto("hello world!", x));
 
-            Goal g = new CallFresh(x => Membero(x, LCons.TructList('a', 'b', 'c')));
+            //Goal g = new CallFresh(x => Sharedo("abc", x));
+
+            //Goal g = new CallFresh(x => Membero(x, LCons.TructList('a', 'b', 'c')));
+
+            Goal g = new CallFresh(x => NotMembero('b', LCons.TructList('a', x, 'c')));
+
+            //Goal g = new CallFresh(x => Reverseo(x, "abcd"));
 
             Console.WriteLine("Sphinx of black quartz! Judge my vow:");
             Console.WriteLine();

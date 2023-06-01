@@ -7,18 +7,14 @@ namespace DunKanren.Goals
     public abstract class Combination<T> : Goal<T>, ICollectionInitialized<T>
         where T : Goal
     {
-        protected virtual List<T> SubGoals { get; private set; } = new();
-
-        public override IEnumerable<IPrintable> ChildGoals => this.SubGoals;
-
         protected Combination(params T[] goals)
         {
-            this.SubGoals = goals.ToList();
+            this.Subs = goals.Select(x => Lazify(x)).ToList();
         }
 
         public override Stream PursueIn(State s)
         {
-            if (!this.SubGoals.Any())
+            if (!this.Subs.Any())
             {
                 return Stream.Empty();
             }
@@ -26,11 +22,14 @@ namespace DunKanren.Goals
             return base.PursueIn(s);
         }
 
-        public override IEnumerator<T> GetEnumerator() => this.SubGoals.GetEnumerator();
+        public void Add(T goal)
+        {
+            this.Subs.Add(new Lazy<T>(() => goal));
+        }
 
-        public abstract void Add(T goal);
+        protected Lazy<T> Lazify(T g) => new Lazy<T>(() => g);
 
-        public override int Ungroundedness => this.SubGoals.Sum(x => x.Ungroundedness);
+        public override int Ungroundedness => this.Subs.Sum(x => x.Value.Ungroundedness);
     }
 
     /// <summary>
@@ -39,26 +38,20 @@ namespace DunKanren.Goals
     public class Conjunction<T> : Combination<T>
         where T : Goal
     {
-        public override string Expression => String.Join(" && ", this.ChildGoals);
-        public override string Description => "Both of the following are true";
+        public override string Expression => String.Join(" && ", this.SubExpressions);
+        public override string Description => "All of the following are true";
 
         public Conjunction(params T[] goals) : base(goals) { }
 
-        public override Goal Negate()
+        internal override Func<State, Stream> GetApp()
         {
-            return new Disjunction<Goal>(this.SubGoals.Select(x => x.Negate()).ToArray());
+            return (State s) => this.Subs.Select(x => x.Value.GetApp()).Aggregate(Conjunction<T>.Aggregate)(s);
         }
 
-        protected override Stream Application(State s)
+        internal override Func<State, Stream> GetNeg()
         {
-            return Stream.New(
-                this.SubGoals
-                .Order()
-                .Aggregate(Stream.Singleton(s),
-                    (xStr, xG) => Stream.New(xStr.SelectMany(xS => xG.PursueIn(xS)))));
+            return (State s) => this.Subs.Order().Select(x => x.Value.GetNeg()).Aggregate(Disjunction<T>.Aggregate)(s);
         }
-
-        public override void Add(T goal) => this.SubGoals.Add(goal);
 
         public static Func<State, Stream> Aggregate(Func<State, Stream> g1, Func<State, Stream> g2)
         {
@@ -93,22 +86,20 @@ namespace DunKanren.Goals
     public class Disjunction<T> : Combination<T>
         where T : Goal
     {
-        public override string Expression => String.Join(" || ", this.ChildGoals);
+        public override string Expression => String.Join(" || ", this.SubExpressions);
         public override string Description => "At least one of the following is true";
 
         public Disjunction(params T[] goals) : base(goals) { }
 
-        public override Goal Negate()
+        internal override Func<State, Stream> GetApp()
         {
-            return new Conjunction<Goal>(this.SubGoals.Select(x => x.Negate()).ToArray());
+            return (State s) => this.Subs.Select(x => x.Value.GetApp()).Aggregate(Disjunction<T>.Aggregate)(s);
         }
 
-        protected override Stream Application(State s)
+        internal override Func<State, Stream> GetNeg()
         {
-            return Stream.New(this.SubGoals.Select(x => x.PursueIn(s)).Aggregate(Stream.Interleave));
+            return (State s) => this.Subs.Order().Select(x => x.Value.GetNeg()).Aggregate(Conjunction<T>.Aggregate)(s);
         }
-
-        public override void Add(T goal) => this.SubGoals.Add(goal);
 
         public static Func<State, Stream> Aggregate(Func<State, Stream> g1, Func<State, Stream> g2)
         {
