@@ -43,23 +43,23 @@
             Assert.AreEqual(0, s2.RecursionLevel);
         }
 
-        [TestMethod]
-        public void Test_Call()
-        {
-            Goal g1 = new Top();
-            Goal g2 = new Call(g1);
-            Goal g3 = new Call(g1.PursueIn);
+        //[TestMethod]
+        //public void Test_Call()
+        //{
+        //    Goal g1 = new Top();
+        //    Goal g2 = new Call(g1);
+        //    Goal g3 = new Call(g1.PursueIn);
 
-            State s = State.InitialState();
-            State s1 = g1.PursueIn(s).First();
-            State s2 = g2.PursueIn(s).First();
-            State s3 = g3.PursueIn(s).First();
+        //    State s = State.InitialState();
+        //    State s1 = g1.PursueIn(s).First();
+        //    State s2 = g2.PursueIn(s).First();
+        //    State s3 = g3.PursueIn(s).First();
 
-            Assert.AreSame(s, s1);
-            Assert.AreEqual(0, s1.RecursionLevel);
-            Assert.AreEqual(1, s2.RecursionLevel);
-            Assert.AreEqual(1, s3.RecursionLevel);
-        }
+        //    Assert.AreSame(s, s1);
+        //    Assert.AreEqual(0, s1.RecursionLevel);
+        //    Assert.AreEqual(1, s2.RecursionLevel);
+        //    Assert.AreEqual(1, s3.RecursionLevel);
+        //}
 
         [TestMethod]
         public void Test_CallFresh()
