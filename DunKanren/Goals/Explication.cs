@@ -18,7 +18,7 @@ namespace DunKanren.Goals
         public override string Expression => $"{this.Implicand} <- {String.Join(", ", this.InnerGoal.ChildGoals)}";
         public override string Description => "The first statement is implied by the rest";
 
-        private T Implicand;
+        private T? Implicand = null;
         private Disjunction<Goal> InnerGoal = new();
 
         public Implication(T conclusion, params T[] hypotheses) : base(hypotheses)
@@ -33,6 +33,11 @@ namespace DunKanren.Goals
 
         protected override Stream Application(State s)
         {
+            if (ReferenceEquals(this.Implicand, null))
+            {
+                return Stream.Empty();
+            }
+
             return Stream.Interleave(this.Implicand.PursueIn(s), this.InnerGoal.PursueIn(s));
         }
 
@@ -41,7 +46,15 @@ namespace DunKanren.Goals
             return this.InnerGoal.Negate();
         }
 
-        public override void Add(T goal) => this.InnerGoal.Add(goal.Negate());
+        public override void Add(T goal)
+        {
+            if (ReferenceEquals(this.Implicand, null))
+            {
+                this.Implicand = goal;
+            }
+
+            this.InnerGoal.Add(goal.Negate());
+        }
     }
 
     public sealed class Impl : Implication<Goal>
