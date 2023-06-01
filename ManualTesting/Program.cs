@@ -8,7 +8,6 @@ namespace DunKanren
         {
             return new Conj()
             {
-                cons != Term.NIL,
                 LCons.Truct(car, cdr) == cons
             };
         }
@@ -35,41 +34,9 @@ namespace DunKanren
             };
         }
 
-        //static Goal Appendo2(Term a, Term b, Term c)
-        //{
-        //    static Goal helper(Seq seqA, Seq seqB, Seq seqC)
-        //    {
-        //        return new Disjoint()
-        //        {
-        //            new Conjoint()
-        //            {
-        //                seqB.Empty() == Term.True,
-        //                seqA == seqC
-        //            },
-        //            new CallFresh((aMore, bFront, bRest) => new Conjoint()
-        //            {
-        //                bFront == Seq.PeekFront(seqB),
-        //                bRest == Seq.PopFront(seqB),
-        //                aMore == Seq.PushBack(seqA, bFront),
-        //                Appendo2(aMore, bRest, seqC)
-        //            })
-        //        };
-        //    }
-
-        //    return helper(Seq.Uence(a), Seq.Uence(b), Seq.Uence(c));
-        //}
-
         static Goal Membero(Term a, Term coll)
         {
-            return new CallFresh((first, rest) => new Conj()
-            {
-                Conso(first, rest, coll),
-                new Disj()
-                {
-                    a == first,
-                    Membero(a, rest)
-                }
-            });
+            return new CallFresh((first, rest) => new Conj(Conso(first, rest, coll), coll != Term.NIL, first != Term.NIL, Goal.OR(a == first, Membero(a, rest))));
         }
 
         static Goal NotMembero(Term a, Term coll)
@@ -77,280 +44,225 @@ namespace DunKanren
             return Membero(a, coll).Negate();
         }
 
-        //static Goal Removeo(Term x, Term collA, Term collB)
-        //{
-        //    return new Disjoint()
-        //    {
-        //        new Conjoint()
-        //        {
-        //            collA == Term.nil,
-        //            collB == Term.nil
-        //        },
-        //        new CallFresh((firstA, restA, firstB, restB) => new Conjoint()
-        //        {
-        //            Splito(collA, firstA, restA),
-        //            Splito(collB, firstB, restB),
-        //            x != firstB,
-        //            new NormalDisjunctive()
-        //            {
-        //                { x == firstA, firstA != firstB, Removeo(x, restA, collB) },
-        //                { x != firstA, firstA == firstB, Removeo(x, restA, restB) }
-        //            }
-        //        })
-        //    };
-        //}
+        static Goal Removeo(Term r, Term collFull, Term collPrun)
+        {
+            return new Disj()
+            {
+                collFull == collPrun,
+                new CallFresh((firstF, restF, firstP, restP) => new Conj()
+                {
+                    Conso(firstF, restF, collFull),
+                    Conso(firstP, restP, collPrun),
+                    r != firstP,
+                    new DNF()
+                    {
+                        { r == firstF, Removeo(r, restF, collPrun) },
+                        { firstF == firstP, Removeo(r, restF, restP) }
+                    }
+                })
+            };
+        }
 
-        //static Goal Distincto(Term coll)
-        //{
-        //    return new Disjoint()
-        //    {
-        //        coll == Term.nil,
-        //        new CallFresh((first, rest) => new Conjoint()
-        //        {
-        //            Splito(coll, first, rest),
-        //            NotMembero(first, rest),
-        //            Distincto(rest)
-        //        })
-        //    };
-        //}
+        static Goal Distincto(Term coll)
+        {
+            return new Disj()
+            {
+                coll == Term.NIL,
+                new CallFresh((first, rest) => new Conj()
+                {
+                    Conso(first, rest, coll),
+                    NotMembero(first, rest),
+                    Distincto(rest)
+                })
+            };
+        }
 
-        //static Goal Uniqueo(Term coll)
-        //{
-        //    return new Disjoint()
-        //    {
-        //        coll == Term.nil,
-        //        new CallFresh((first, rest) => new Conjoint()
-        //        {
-        //            Splito(coll, first, rest),
-        //            NotMembero(first, rest),
-        //            Uniqueo(rest)
-        //        })
-        //    };
-        //}
+        static Goal Sharedo(Term collA, Term collB)
+        {
+            return new Disj()
+            {
+                new Conj()
+                {
+                    collA == Term.NIL,
+                    collB == Term.NIL
+                },
+                new CallFresh((firstA, restA, firstB, restB) => new Conj()
+                {
+                    Conso(firstA, restA, collA),
+                    Conso(firstB, restB, collB),
+                    new Disj()
+                    {
+                        firstA == firstB,
+                        new Conj()
+                        {
+                            Membero(firstA, restB),
+                            Membero(firstB, restA)
+                        }
+                    },
+                    Sharedo(restA, restB)
+                })
+            };
+        }
 
-        //static Goal Bijecto(Term collA, Term collB)
-        //{
-        //    return new Conjoint()
-        //    {
-        //        Uniqueo(collA),
-        //        Uniqueo(collB),
-        //        new Disjoint()
-        //        {
-        //            new Conjoint()
-        //            {
-        //                collA == Term.nil,
-        //                collB == Term.nil
-        //            },
-        //            new CallFresh((firstA, restA, firstB, restB) => new Conjoint()
-        //            {
-        //                Splito(collA, firstA, restA),
-        //                Splito(collB, firstB, restB),
-        //                new Disjoint()
-        //                {
-        //                    firstA == firstB,
-        //                    new Conjoint()
-        //                    {
-        //                        Membero(firstA, restB),
-        //                        Membero(firstB, restA)
-        //                    }
-        //                },
-        //                Bijecto(restA, restB)
-        //            })
-        //        }
-        //    };
-        //}
-
-        //static Goal Bijecto (Term collA, Term collB)
-        //{
-        //    //let's try another tactic
-        //    //there's a bijection if every element in A is unique
-        //    //and if B can be rearranged to be equal to A
-        //    return new Shell(new Conj()
-        //    {
-        //        Distincto(collA),
-        //        Mutato(collA, collB)
-        //    },
-        //    "(" + collA.ToString() + " <--> " + collB.ToString() + ")",
-        //    "There's a bijective (1-to-1) mapping from " + collA.ToString() + " to " + collB.ToString() + ". As such:"
-        //    );
-
-        //}
-
-        ///// <summary>
-        ///// Establishes that B is either identical to or a valid reordering of A
-        ///// </summary>
-        //static Goal Mutato(Term collA, Term collB)
-        //{
-        //    return new Shell(new Disj()
-        //    {
-        //        new Conj()
-        //        {
-        //            collA == Term.nil,
-        //            collB == Term.nil,
-        //        },
-        //        new CallFresh((firstA, restA, lessB) => new Conj()
-        //        {
-        //            Popo(collA, firstA, restA),
-        //            Membero(firstA, collB),
-        //            Removeo(firstA, collB, lessB),
-        //            NotMembero(firstA, lessB),
-        //            Mutato(restA, lessB)
-        //        })
-        //    },
-        //    "(" + collA.ToString() + " <~~> " + collB.ToString() + ")",
-        //    collA.ToString() + " can be reordered to form " + collB.ToString() + ". As such:"
-        //    );
-        //}
+        static Goal Bijecto(Term collA, Term collB)
+        {
+            return new Conj()
+            {
+                Distincto(collA),
+                Distincto(collB),
+                Sharedo(collA, collB)
+            };
+        }
 
         // h e l l o 'n
         // o l l e h 'n
 
-        //static Goal Reverseo(Term collA, Term collB)
-        //{
-        //    static Goal helper(Term coll_a, Term coll_b, Term mem)
-        //    {
-        //        return new Disjoint()
-        //        {
-        //            new Conjoint()
-        //            {
-        //                coll_a == Term.nil,
-        //                coll_b == mem
-        //            },
-        //            new CallFresh((firstA, restA, newB) => new Conjoint()
-        //            {
-        //                Splito(coll_a, firstA, restA),
-        //                newB == Cons.Truct(firstA, mem),
-        //                helper(restA, coll_b, newB)
-        //            })
-        //        };
-        //    }
+        static Goal Reverseo(Term collA, Term collB)
+        {
+            static Goal helper(Term coll_a, Term coll_b, Term mem)
+            {
+                return new Disj()
+                {
+                    new Conj()
+                    {
+                        coll_a == Term.NIL,
+                        coll_b == mem
+                    },
+                    new CallFresh((firstA, restA, newMem) => new Conj()
+                    {
+                        Conso(firstA, restA, coll_a),
+                        newMem == Cons.Truct(firstA, mem),
+                        helper(restA, coll_b, newMem)
+                    })
+                };
+            }
 
-        //    return helper(collA, collB, Term.nil);
-        //}
+            return helper(collA, collB, Term.NIL);
+        }
 
-        //static Goal Puzzle()
-        //{
-        //    return new CallFresh((Aramis, Athos, Pathos, Constance) =>
-        //        new CallFresh((Aramis_P, Athos_P, Pathos_P, Constance_P, hotel, jardin, estate) =>
-        //            new CallFresh((Aramis_A, Athos_A, Pathos_A, Constance_A, musket, duel, rendM, rendF) => new Conjoint()
-        //            {
-        //                hotel == ValueFactory.Sym("Hotel Treville"),
-        //                jardin == ValueFactory.Sym("Jardin du Luxembourg"),
-        //                estate == ValueFactory.Sym("Geroge Villier's Estate"),
+        static Goal Puzzle()
+        {
+            return new CallFresh((Aramis, Athos, Pathos, Constance) =>
+                new CallFresh((Aramis_P, Athos_P, Pathos_P, Constance_P, hotel, jardin, estate) =>
+                    new CallFresh((Aramis_A, Athos_A, Pathos_A, Constance_A, musket, duel, rendM, rendF) => new Conj()
+                    {
+                        hotel == ValueFactory.Sym("Hotel Treville"),
+                        jardin == ValueFactory.Sym("Jardin du Luxembourg"),
+                        estate == ValueFactory.Sym("Geroge Villier's Estate"),
 
-        //                musket == ValueFactory.Sym("Cleaning his musket"),
-        //                duel == ValueFactory.Sym("Dueling Cardinal Richelieu"),
-        //                rendF == ValueFactory.Sym("Meeting with a man"),
-        //                rendM == ValueFactory.Sym("Meeting with a woman"),
+                        musket == ValueFactory.Sym("Cleaning his musket"),
+                        duel == ValueFactory.Sym("Dueling Cardinal Richelieu"),
+                        rendF == ValueFactory.Sym("Meeting with a man"),
+                        rendM == ValueFactory.Sym("Meeting with a woman"),
 
-        //                Aramis == Cons.Truct(Aramis_P, Aramis_A),
-        //                Athos == Cons.Truct(Athos_P, Athos_A),
-        //                Pathos == Cons.Truct(Pathos_P, Pathos_A),
-        //                Constance == Cons.Truct(Constance_P, Constance_A),
+                        Aramis == Cons.Truct(Aramis_P, Aramis_A),
+                        Athos == Cons.Truct(Athos_P, Athos_A),
+                        Pathos == Cons.Truct(Pathos_P, Pathos_A),
+                        Constance == Cons.Truct(Constance_P, Constance_A),
 
-        //                new Conjoint()
-        //                {
-        //                    Membero(Aramis_P, Cons.TructList(hotel, jardin, estate)),
-        //                    Membero(Athos_P, Cons.TructList(hotel, jardin, estate)),
-        //                    Membero(Pathos_P, Cons.TructList(hotel, jardin, estate)),
-        //                    Membero(Constance_P, Cons.TructList(hotel, jardin, estate))
-        //                },
+                        new Conj()
+                        {
+                            Membero(Aramis_P, LCons.TructList(hotel, jardin, estate)),
+                            Membero(Athos_P, LCons.TructList(hotel, jardin, estate)),
+                            Membero(Pathos_P, LCons.TructList(hotel, jardin, estate)),
+                            Membero(Constance_P, LCons.TructList(hotel, jardin, estate))
+                        },
 
-        //                new Conjoint()
-        //                {
-        //                    Membero(Aramis_A, Cons.TructList(musket, duel, rendM)),
-        //                    Membero(Athos_A, Cons.TructList(musket, duel, rendM)),
-        //                    Membero(Pathos_A, Cons.TructList(musket, duel, rendM)),
-        //                    Constance_A == rendF
-        //                },
+                        new Conj()
+                        {
+                            Membero(Aramis_A, LCons.TructList(musket, duel, rendM)),
+                            Membero(Athos_A, LCons.TructList(musket, duel, rendM)),
+                            Membero(Pathos_A, LCons.TructList(musket, duel, rendM)),
+                            Constance_A == rendF
+                        },
 
-        //                new Conjoint()
-        //                {
-        //                    Aramis_P != Athos_P,
-        //                    Athos_P != Pathos_P,
-        //                    Pathos_P != Aramis_P
-        //                },
+                        new Conj()
+                        {
+                            Aramis_P != Athos_P,
+                            Athos_P != Pathos_P,
+                            Pathos_P != Aramis_P
+                        },
 
-        //                new Conjoint()
-        //                {
-        //                    Aramis_A != Athos_A,
-        //                    Athos_A != Pathos_A,
-        //                    Pathos_A != Aramis_A
-        //                },
+                        new Conj()
+                        {
+                            Aramis_A != Athos_A,
+                            Athos_A != Pathos_A,
+                            Pathos_A != Aramis_A
+                        },
 
-        //                //setup complete
+                        //setup complete
 
-        //                new Disjoint()
-        //                {
-        //                    new Conjoint()
-        //                    {
-        //                        Aramis_P != jardin,
-        //                        Athos != jardin
-        //                    },
-        //                    new Disjoint()
-        //                    {
-        //                        Aramis == Cons.Truct(hotel, musket),
-        //                        Athos == Cons.Truct(hotel, musket),
-        //                        Pathos == Cons.Truct(hotel, musket)
-        //                    }
-        //                },
+                        new Disj()
+                        {
+                            new Conj()
+                            {
+                                Aramis_P != jardin,
+                                Athos != jardin
+                            },
+                            new Disj()
+                            {
+                                Aramis == Cons.Truct(hotel, musket),
+                                Athos == Cons.Truct(hotel, musket),
+                                Pathos == Cons.Truct(hotel, musket)
+                            }
+                        },
 
-        //                new Conjoint()
-        //                {
-        //                    Pathos_A != duel,
-        //                    new Conjoint()
-        //                    {
-        //                        Aramis != Cons.Truct(jardin, duel),
-        //                        Athos != Cons.Truct(jardin, duel),
-        //                        Pathos != Cons.Truct(jardin, duel)
-        //                    }
-        //                },
+                        new Conj()
+                        {
+                            Pathos_A != duel,
+                            new Conj()
+                            {
+                                Aramis != Cons.Truct(jardin, duel),
+                                Athos != Cons.Truct(jardin, duel),
+                                Pathos != Cons.Truct(jardin, duel)
+                            }
+                        },
 
-        //                new Conjoint()
-        //                {
-        //                    Aramis_A != musket,
-        //                    Aramis_P != hotel
-        //                },
+                        new Conj()
+                        {
+                            Aramis_A != musket,
+                            Aramis_P != hotel
+                        },
 
-        //                new Disjoint()
-        //                {
-        //                    Pathos_A != musket,
-        //                    Constance_P != jardin
-        //                },
+                        new Disj()
+                        {
+                            Pathos_A != musket,
+                            Constance_P != jardin
+                        },
 
-        //                new Conjoint()
-        //                {
-        //                    new Disjoint()
-        //                    {
-        //                        Pathos_P != estate,
-        //                        new Disjoint()
-        //                        {
-        //                            Aramis == Cons.Truct(estate, duel),
-        //                            Athos == Cons.Truct(estate, duel),
-        //                            Pathos == Cons.Truct(estate, duel)
-        //                        }
-        //                    },
-        //                    new Disjoint()
-        //                    {
-        //                        new Conjoint()
-        //                        {
-        //                            Aramis != Cons.Truct(estate, duel),
-        //                            Athos != Cons.Truct(estate, duel),
-        //                            Pathos != Cons.Truct(estate, duel)
-        //                        },
-        //                        Pathos_P == estate
-        //                    }
-        //                },
+                        new Conj()
+                        {
+                            new Disj()
+                            {
+                                Pathos_P != estate,
+                                new Disj()
+                                {
+                                    Aramis == Cons.Truct(estate, duel),
+                                    Athos == Cons.Truct(estate, duel),
+                                    Pathos == Cons.Truct(estate, duel)
+                                }
+                            },
+                            new Disj()
+                            {
+                                new Conj()
+                                {
+                                    Aramis != Cons.Truct(estate, duel),
+                                    Athos != Cons.Truct(estate, duel),
+                                    Pathos != Cons.Truct(estate, duel)
+                                },
+                                Pathos_P == estate
+                            }
+                        },
 
-        //                Constance_P != hotel
-        //            })));
-        //}
+                        Constance_P != hotel
+                    })));
+        }
 
         //static Goal PuzzleNew()
         //{
         //    return new CallFresh((Aramis, Athos, Pathos, Constance) =>
         //        new CallFresh((Aramis_Doing, Athos_Doing, Pathos_Doing, Constance_Doing, musket, rendezvous, duel) =>
-        //            new CallFresh((Aramis_Location, Athos_Location, Pathos_Location, Constance_Location, hotel, jardin, estate) => new Conjoint()
+        //            new CallFresh((Aramis_Location, Athos_Location, Pathos_Location, Constance_Location, hotel, jardin, estate) => new Conj()
         //            {
         //                hotel == "Hotel Treville",
         //                jardin == "Jardin du Luxembourg",
@@ -367,27 +279,27 @@ namespace DunKanren
         //                Pathos == Cons.Truct(Pathos_Doing, Pathos_Location),
         //                Constance == Cons.Truct(Constance_Doing, Constance_Location),
 
-        //                Bijecto(Cons.TructList(Aramis_Doing, Athos_Doing, Pathos_Doing), Cons.TructList(musket, rendezvous, duel)),
-        //                Bijecto(Cons.TructList(Aramis_Location, Athos_Location, Pathos_Location), Cons.TructList(hotel, jardin, estate)),
+        //                Bijecto(LCons.TructList(Aramis_Doing, Athos_Doing, Pathos_Doing), LCons.TructList(musket, rendezvous, duel)),
+        //                Bijecto(LCons.TructList(Aramis_Location, Athos_Location, Pathos_Location), LCons.TructList(hotel, jardin, estate)),
 
-        //                new Implication
+        //                new Impl
         //                (
-        //                    new Disjoint()
+        //                    new Disj()
+        //                    {
+        //                        new Conj(Aramis_Doing == musket, Aramis_Location == hotel),
+        //                        new Conj(Athos_Doing == musket, Athos_Location == hotel ),
+        //                        new Conj(Pathos_Doing == musket, Pathos_Location == hotel)
+        //                    },
+        //                    new Disj()
         //                    {
         //                        Aramis_Location == jardin,
         //                        Athos_Location == jardin
-        //                    },
-        //                    new NormalDisjunctive()
-        //                    {
-        //                        { Aramis_Doing == musket, Aramis_Location == hotel },
-        //                        { Athos_Doing == musket, Athos_Location == hotel },
-        //                        { Pathos_Doing == musket, Pathos_Location == hotel }
         //                    }
         //                ),
 
         //                Pathos_Doing != duel,
 
-        //                new NormalDisjunctive()
+        //                new DNF()
         //                {
         //                    { Aramis_Doing == duel, Aramis_Location == jardin },
         //                    { Athos_Doing == duel, Athos_Location == jardin },
@@ -397,9 +309,9 @@ namespace DunKanren
         //                Aramis_Doing != musket,
         //                Aramis_Location != hotel,
 
-        //                new Implication(Pathos_Doing == musket, Constance_Location != jardin),
-        //                new BiImplication(
-        //                    new NormalDisjunctive()
+        //                new Impl(Pathos_Doing == musket, Constance_Location != jardin),
+        //                new BImp(
+        //                    new DNF()
         //                    {
         //                        { Aramis_Doing == duel, Aramis_Location == estate },
         //                        { Athos_Doing == duel, Athos_Location == estate },
@@ -412,46 +324,103 @@ namespace DunKanren
         //            })));
         //}
 
+        private struct Person
+        {
+            public enum Name { Alice, Husband, Son, Daughter, Brother };
+            public enum KillerStatus { Killer, Victim, Bystander };
+            public enum Location { Beach, Bar, Elsewhere };
+            public enum Sex { Man, Woman };
+
+            public Name Identity;
+            public Name Sibling;
+            public bool Twins;
+            public Location Place;
+            public Sex Gender;
+            public KillerStatus Role;
+
+            public Person (Name id, Name sib, bool twins, Location pl, KillerStatus role)
+            {
+                this.Identity = id;
+                this.Sibling = sib;
+                this.Twins = twins;
+                this.Place = pl;
+                this.Role = role;
+            }
+        }
+
+        /*
+         Alice, Husband, Son, Daughter, Brother
+         Exactly one of these people is a killer
+         one of these people is a victim
+         two of these people are twins (either alice/brother or son/daughter)
+         each person was at a given location (bar, beach, elsewhere)
+         each person is one of two genders
+
+        relations:
+         together (implies location was the same
+         twins (implies neither is younger than the other)
+         younger-than
+
+        all of these things are true:
+        1. two people were at the bar. one is a man, one is a woman
+        2. two people were together at the beach. one is the victim, one is the killer
+        3. one of son or daughter was elsehwere, alone
+        4. alice's location isn't the same as husband's location
+        5. the victim and killer were not twins
+        6. the killer was younger than the victim
+         */
+        //https://leanprover.github.io/logic_and_proof/propositional_logic.html
+        public static Goal MurderPuzzle()
+        {
+            return
+                new CallFresh((Alice, Husband, Brother, Son, Daughter) =>
+                new CallFresh((BarMan, BarWoman, Killer, Victim, Loner) =>
+                new Conj()
+            {
+                    Bijecto(LCons.TructList(Alice, Husband, Brother, Son, Daughter), LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
+
+                    Membero(BarMan, LCons.TructList(Husband, Brother, Son)),
+                    Membero(BarWoman, LCons.TructList(Alice, Daughter)),
+
+                    new Disj()
+                    {
+                        Loner == Son,
+                        Loner == Daughter
+                    },
+
+                    new Disj()
+                    {
+                        BarWoman != Alice,
+                        new Disj(Victim == Husband, Killer == Husband)
+                    },
+                    new Disj()
+                    {
+                        BarMan != Husband,
+                        new Disj(Victim == Alice, Killer == Alice)
+                    },
+
+                    new Disj()
+                    {
+                        new Disj(Alice != Victim, Brother != Killer),
+                        new Disj(Brother != Victim, Alice != Killer),
+                        new Disj(Son != Victim, Daughter != Killer),
+                        new Disj(Daughter != Victim, Son != Killer)
+                    },
+
+                    new Disj(Son != Victim, Daughter == Killer),
+                    new Disj(Daughter != Victim, Son == Killer),
+                    new Disj(Alice != Victim, new Disj(Son == Killer, Daughter == Killer)),
+                    new Disj(Husband != Victim, new Disj(Son == Killer, Daughter == Killer))
+            }));
+        }
+
         static void Main()
         {
 
-            //var g3 = Goal.CallFresh(x => Goal.CallFresh(y => Goal.Conjunction(Goal.Equality(x, 5), Goal.Equality(x, y))));
 
+            //Goal g = MurderPuzzle();
 
-            //Goal g = Goal.CallFresh(x => Goal.CallFresh(y => Goal.Conjunction(Goal.Equality(x, 5), Goal.Disjunction(Goal.Equality(y, x), Goal.Equality(y, 6)))));
-            /*
-            Goal g = new CallFresh((x, y) => new Conj()
-            {
-                x == 5,
-                new Disj()
-                {
-                    y == x,
-                    y == 6
-                }
-            });
-            */
-            //Goal g = new CallFresh(x => Appendo("hello", x, "hello world!"));
-
-            //Goal g = new CallFresh((x, y) => Appendo(x, y, "hello world!"));
-
-            //Goal g = new CallFresh(x => Membero("a", x));
-
-
-            //Goal g = new CallFresh((x, y) => new Conjoint()
-            //{
-            //    new Disjoint()
-            //    {
-            //        x == 5,
-            //        x == 6
-            //    },
-            //    y == x,
-            //    y != 5
-            //});
-
-
-            //Goal g = PuzzleNew();
-
-            Goal g = new CallFresh((x, y) => new Conj(x == 5, y == 6));
+            //Goal g = new CallFresh((x, y) => new Conj(x == 5, y == 6));
 
             //Goal g = new CallFresh((x, y) => Appendo(x, y, "abc"));
 
@@ -459,6 +428,10 @@ namespace DunKanren
             //    Appendo(x, y, z),
             //    Appendo(z, w, "abcd")
             //});
+
+            //Goal g = new CallFresh(x => Bijecto("hello world!", x));
+
+            Goal g = new CallFresh(x => Membero(x, LCons.TructList('a', 'b', 'c')));
 
             Console.WriteLine("Sphinx of black quartz! Judge my vow:");
             Console.WriteLine();
@@ -494,8 +467,10 @@ namespace DunKanren
             {
                 Console.WriteLine("Your vow has been judged, so says the sphinx of black quartz!");
             }
-            Console.WriteLine("...");
-            Console.ReadKey(true);
+            Console.WriteLine();
+            IO.Prompt(true);
+
+            Environment.Exit(0);
         }
     }
 }
