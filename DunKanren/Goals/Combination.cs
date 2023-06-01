@@ -16,6 +16,16 @@ namespace DunKanren.Goals
             this.SubGoals = goals.ToList();
         }
 
+        public override Stream PursueIn(State s)
+        {
+            if (!this.SubGoals.Any())
+            {
+                return Stream.Empty();
+            }
+
+            return base.PursueIn(s);
+        }
+
         public override IEnumerator<T> GetEnumerator() => this.SubGoals.GetEnumerator();
 
         public abstract void Add(T goal);
@@ -41,10 +51,11 @@ namespace DunKanren.Goals
 
         protected override Stream Application(State s)
         {
-            return this.SubGoals
+            return Stream.New(
+                this.SubGoals
                 .Order()
                 .Aggregate(Stream.Singleton(s),
-                    (xStr, xG) => Stream.New(xStr.SelectMany(xS => xG.PursueIn(xS))));
+                    (xStr, xG) => Stream.New(xStr.SelectMany(xS => xG.PursueIn(xS)))));
         }
 
         public override void Add(T goal) => this.SubGoals.Add(goal);
@@ -58,6 +69,22 @@ namespace DunKanren.Goals
     public sealed class Conj : Conjunction<Goal>
     {
         public Conj(params Goal[] goals) : base(goals) { }
+    }
+
+    public class ConjunctiveNormal<T> : Conjunction<Disjunction<T>>
+        where T : Goal
+    {
+        public ConjunctiveNormal(params T[] goals) : base(new Disjunction<T>(goals)) { }
+
+        public void Add(params T[] goals)
+        {
+            this.Add(new Disjunction<T>(goals));
+        }
+    }
+
+    public sealed class CNF : ConjunctiveNormal<Goal>
+    {
+        public CNF(params Goal[] goals) : base(goals) { }
     }
 
     /// <summary>
@@ -78,7 +105,7 @@ namespace DunKanren.Goals
 
         protected override Stream Application(State s)
         {
-            return this.SubGoals.Select(x => x.PursueIn(s)).Aggregate(Stream.Interleave);
+            return Stream.New(this.SubGoals.Select(x => x.PursueIn(s)).Aggregate(Stream.Interleave));
         }
 
         public override void Add(T goal) => this.SubGoals.Add(goal);
@@ -92,6 +119,22 @@ namespace DunKanren.Goals
     public sealed class Disj : Disjunction<Goal>
     {
         public Disj(params Goal[] goals) : base(goals) { }
+    }
+
+    public class DisjunctiveNormal<T> : Disjunction<Conjunction<T>>
+        where T : Goal
+    {
+        public DisjunctiveNormal(params T[] goals) : base(new Conjunction<T>(goals)) { }
+
+        public void Add(params T[] goals)
+        {
+            this.Add(new Conjunction<T>(goals));
+        }
+    }
+
+    public sealed class DNF : DisjunctiveNormal<Goal>
+    {
+        public DNF(params Goal[] goals) : base(goals) { }
     }
 
 }
