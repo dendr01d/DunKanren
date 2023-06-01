@@ -96,6 +96,36 @@ namespace DunKanren.Goals
 
             return g1.Ungroundedness.CompareTo(g2.Ungroundedness);
         }
+
+        public static Goal NOT(Goal g)
+        {
+            return g.Negate();
+        }
+
+        public static Goal AND(Goal g1, Goal g2)
+        {
+            return new Conj(g1, g2);
+        }
+
+        public static Goal OR(Goal g1, Goal g2)
+        {
+            return new Disj(g1, g2);
+        }
+
+        public static Goal IMPL(Goal g1, Goal g2)
+        {
+            return new Disj(g1.Negate(), g2);
+        }
+
+        public static Goal BIMP(Goal g1, Goal g2)
+        {
+            return new Conj(IMPL(g1, g2), IMPL(g2, g1));
+        }
+
+        public static Goal XOR(Goal g1, Goal g2)
+        {
+            return AND(OR(g1, g2), AND(g1, g2).Negate());
+        }
     }
 
     /// <summary>
