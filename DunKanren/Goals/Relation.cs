@@ -26,7 +26,7 @@ namespace DunKanren.Goals
 
         private List<Term> GetList() => new List<Term>() { this.LeftArg, this.RightArg };
 
-        public override int Ungroundedness => int.Min(LeftArg.Ungroundedness, RightArg.Ungroundedness);
+        public override uint Ungroundedness => uint.Min(LeftArg.Ungroundedness, RightArg.Ungroundedness);
     }
 
     /// <summary>
@@ -39,8 +39,8 @@ namespace DunKanren.Goals
 
         public Equality(Term lhs, Term rhs) : base(lhs, rhs) { }
 
-        internal override Func<State, Stream> GetApp() => (State s) => Equality.Assert(s, this.LeftArg, this.RightArg);
-        internal override Func<State, Stream> GetNeg() => (State s) => Disequality.Assert(s, this.LeftArg, this.RightArg);
+        internal override Lazy<Func<State, Stream>> GetApp() => new(() => (State s) => Equality.Assert(s, this.LeftArg, this.RightArg));
+        internal override Lazy<Func<State, Stream>> GetNeg() => new(() => (State s) => Disequality.Assert(s, this.LeftArg, this.RightArg));
 
         public static Stream Assert(State s, Term left, Term right)
         {
@@ -62,8 +62,8 @@ namespace DunKanren.Goals
 
         public Disequality(Term lhs, Term rhs) : base(lhs, rhs) { }
 
-        internal override Func<State, Stream> GetApp() => (State s) => Disequality.Assert(s, this.LeftArg, this.RightArg);
-        internal override Func<State, Stream> GetNeg() => (State s) => Equality.Assert(s, this.LeftArg, this.RightArg);
+        internal override Lazy<Func<State, Stream>> GetApp() => new(() => (State s) => Disequality.Assert(s, this.LeftArg, this.RightArg));
+        internal override Lazy<Func<State, Stream>> GetNeg() => new(() => (State s) => Equality.Assert(s, this.LeftArg, this.RightArg));
 
         public static Stream Assert(State s, Term left, Term right)
         {

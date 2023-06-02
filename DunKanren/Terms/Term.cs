@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace DunKanren
 {
-    public abstract class Term : IPrintable
+    public abstract class Term : IPrintable, IGrounded
     {
         public static readonly Value<bool> True = new(true);
         public static readonly Value<bool> False = new(false);
@@ -38,7 +38,8 @@ namespace DunKanren
         //A cons is concrete if it contains no variables within its entire tree.
         //Everything else is concrete.
 
-        public virtual int Ungroundedness { get; } = 0;
+        public virtual uint Ungroundedness { get; } = 0;
+        public int CompareTo(IGrounded? other) => this.Ungroundedness.CompareTo(other?.Ungroundedness ?? 0);
 
         #endregion
 

@@ -7,18 +7,18 @@ using System.Threading.Tasks;
 
 namespace DunKanren.Goals
 {
-    public abstract class Goal : IPrintable, IComparable<Goal>
+    public abstract class Goal : IPrintable, IComparable<Goal>, IGrounded
     {
         public abstract string Description { get; }
         public abstract string Expression { get; }
         public abstract IEnumerable<IPrintable> SubExpressions { get; }
 
-        public Stream Pursue() => this.GetApp()(State.InitialState());
-        public virtual Stream PursueIn(State s) => this.GetApp()(s);
-        public virtual Stream NegateIn(State s) => this.GetNeg()(s);
+        public Stream Pursue() => this.GetApp().Value(State.InitialState());
+        public virtual Stream PursueIn(State s) => this.GetApp().Value(s);
+        public virtual Stream NegateIn(State s) => this.GetNeg().Value(s);
 
-        internal abstract Func<State, Stream> GetApp();
-        internal abstract Func<State, Stream> GetNeg();
+        internal abstract Lazy<Func<State, Stream>> GetApp();
+        internal abstract Lazy<Func<State, Stream>> GetNeg();
 
         public override string ToString() => $"({this.Expression})";
         public string ToVerboseString() => this.Description;
@@ -60,7 +60,8 @@ namespace DunKanren.Goals
             }
         }
 
-        public abstract int Ungroundedness { get; }
+        public virtual uint Ungroundedness { get => (Priority.IndexOf(this.GetType()) is int p1 ? (uint)p1 : 0); }
+        public int CompareTo(IGrounded? other) => this.Ungroundedness.CompareTo(other?.Ungroundedness ?? 0);
 
         /// <summary>
         /// Goal sorting order for evaluating conjunctions.
@@ -83,12 +84,12 @@ namespace DunKanren.Goals
 
         public static int Compare(Goal g1, Goal g2)
         {
-            //if (Priority.IndexOf(g1.GetType()) is int p1
-            //    && Priority.IndexOf(g2.GetType()) is int p2
-            //    && p1 != p2)
-            //{
-            //    return p1.CompareTo(p2);
-            //}
+            if (Priority.IndexOf(g1.GetType()) is int p1
+                && Priority.IndexOf(g2.GetType()) is int p2
+                && p1 != p2)
+            {
+                return p1.CompareTo(p2);
+            }
 
             return g1.Ungroundedness.CompareTo(g2.Ungroundedness);
         }
@@ -133,10 +134,8 @@ namespace DunKanren.Goals
         public override string Description => this.Expression;
         public override IEnumerable<IPrintable> SubExpressions => Array.Empty<IPrintable>();
 
-        internal override Func<State, Stream> GetApp() => (State s) => Stream.Singleton(s);
-        internal override Func<State, Stream> GetNeg() => (State s) => Stream.Empty();
-
-        public override int Ungroundedness => 0;
+        internal override Lazy<Func<State, Stream>> GetApp() => new(() => (State s) => Stream.Singleton(s));
+        internal override Lazy<Func<State, Stream>> GetNeg() => new(() => (State s) => Stream.Empty());
     }
 
     /// <summary>
@@ -148,10 +147,8 @@ namespace DunKanren.Goals
         public override string Description => this.Expression;
         public override IEnumerable<IPrintable> SubExpressions => Array.Empty<IPrintable>();
 
-        internal override Func<State, Stream> GetApp() => (State s) => Stream.Empty();
-        internal override Func<State, Stream> GetNeg() => (State s) => Stream.Singleton(s);
-
-        public override int Ungroundedness => 0;
+        internal override Lazy<Func<State, Stream>> GetApp() => new(() => (State s) => Stream.Empty());
+        internal override Lazy<Func<State, Stream>> GetNeg() => new(() => (State s) => Stream.Singleton(s));
     }
 
     public class Not : Goal
@@ -167,10 +164,10 @@ namespace DunKanren.Goals
             this.Original = g;
         }
 
-        internal override Func<State, Stream> GetApp() => this.Original.GetNeg();
-        internal override Func<State, Stream> GetNeg() => this.Original.GetApp();
+        internal override Lazy<Func<State, Stream>> GetApp() => this.Original.GetNeg();
+        internal override Lazy<Func<State, Stream>> GetNeg() => this.Original.GetApp();
 
-        public override int Ungroundedness => this.Original.Ungroundedness;
+        public override uint Ungroundedness => this.Original.Ungroundedness;
     }
 
     /// <summary>
@@ -180,8 +177,11 @@ namespace DunKanren.Goals
     public abstract class Goal<T> : Goal, IEnumerable<T>
         where T : class, IPrintable
     {
-        protected List<Lazy<T>> Subs;
-        public override IEnumerable<IPrintable> SubExpressions => this.Subs.Select(x => x.Value);
+        protected List<T> Subs;
+        public override IEnumerable<IPrintable> SubExpressions => this.Subs.Select(x => x);
+
+        public override Stream PursueIn(State s) => this.Subs.Any() ? this.GetApp().Value(s) : Stream.Empty();
+        public override Stream NegateIn(State s) => this.Subs.Any() ? this.GetNeg().Value(s) : Stream.Empty();
 
         protected Goal()
         {
@@ -190,10 +190,10 @@ namespace DunKanren.Goals
 
         protected Goal(params T[] subs)
         {
-            this.Subs = subs.Select(x => new Lazy<T>(() => x)).ToList();
+            this.Subs = subs.ToList();
         }
 
-        public virtual IEnumerator<T> GetEnumerator() => this.Subs.Select(x => x.Value).GetEnumerator();
+        public virtual IEnumerator<T> GetEnumerator() => this.Subs.Select(x => x).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
     }
 

@@ -26,7 +26,7 @@ namespace DunKanren
                 },
                 new Conj()
                 {
-                    //c != Term.NIL,
+                    c != Term.NIL,
                     new CallFresh((first, aRest, cRest) => new Conj()
                     {
                         LCons.Truct(first, aRest) == a,
@@ -59,7 +59,6 @@ namespace DunKanren
                 {
                     Conso(first, rest, coll),
                     first != a,
-                    first != Term.NIL,
                     NotMembero(a, rest)
                 })
             };
@@ -69,7 +68,7 @@ namespace DunKanren
         {
             return new Disj()
             {
-                collFull == collPrun,
+                Goal.AND(collFull == Term.NIL, collPrun == Term.NIL),
                 new CallFresh((firstF, restF, firstP, restP) => new Conj()
                 {
                     Conso(firstF, restF, collFull),
@@ -102,11 +101,7 @@ namespace DunKanren
         {
             return new Disj()
             {
-                new Conj()
-                {
-                    collA == Term.NIL,
-                    collB == Term.NIL
-                },
+                collA == collB,
                 new CallFresh((firstA, restA, firstB, restB) => new Conj()
                 {
                     Conso(firstA, restA, collA),
@@ -127,11 +122,40 @@ namespace DunKanren
 
         static Goal Bijecto(Term collA, Term collB)
         {
+            static Goal helper(Term _collA, Term _collB)
+            {
+                return new XOR()
+                {
+                    _collA == _collB,
+                    new CallFresh((firstA, restA, firstB, restB) => new Conj()
+                    {
+                        Conso(firstA, restA, _collA),
+                        Conso(firstB, restB, _collB),
+                        new Disj()
+                        {
+                            new Conj()
+                            {
+                                firstA == firstB,
+                                NotMembero(firstA, restB),
+                                NotMembero(firstB, restA)
+                            },
+                            new Conj()
+                            {
+                                firstA != firstB,
+                                Membero(firstA, restB),
+                                Membero(firstB, restA)
+                            }
+                        },
+                        helper(restA, restB)
+                    })
+                };
+            }
+
             return new Conj()
             {
                 Distincto(collA),
                 Distincto(collB),
-                Sharedo(collA, collB)
+                helper(collA, collB)
             };
         }
 
@@ -354,40 +378,66 @@ namespace DunKanren
                 new CallFresh((BarMan, BarWoman, Killer, Victim, Loner) =>
                 new Conj()
             {
-                    Bijecto(LCons.TructList(Alice, Husband, Brother, Son, Daughter), LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
+                    BarMan == ValueFactory.Sym("Man at the bar"),
+                    BarWoman == ValueFactory.Sym("Woman at the bar"),
+                    Killer == ValueFactory.Sym("Killer at the beach"),
+                    Victim == ValueFactory.Sym("Victim at the beach"),
+                    Loner == ValueFactory.Sym("Bystander elsewhere"),
+
+                    Membero(Alice, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
+                    Membero(Husband, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
+                    Membero(Brother, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
+                    Membero(Son, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
+                    Membero(Daughter, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
+
+                    new Conj()
+                    {
+                        Alice != Husband, Alice != Brother, Alice != Son, Alice != Daughter,
+                        Husband != Brother, Husband != Son, Husband != Daughter,
+                        Brother != Son, Brother != Daughter,
+                        Son != Daughter,
+                    },
+
+                    //setup complete?
 
                     Membero(BarMan, LCons.TructList(Husband, Brother, Son)),
                     Membero(BarWoman, LCons.TructList(Alice, Daughter)),
 
-                    new Disj()
+                    new XOR()
                     {
                         Loner == Son,
                         Loner == Daughter
                     },
 
-                    new Disj()
-                    {
-                        BarWoman != Alice,
-                        new Disj(Victim == Husband, Killer == Husband)
-                    },
-                    new Disj()
-                    {
-                        BarMan != Husband,
-                        new Disj(Victim == Alice, Killer == Alice)
-                    },
+                    new BImp(Alice == BarWoman, new Disj(Husband == Victim, Husband == Killer)),
+                    new BImp(Husband == BarMan, new Disj(Alice == Victim, Alice == Killer)),
 
-                    new Disj()
-                    {
-                        new Disj(Alice != Victim, Brother != Killer),
-                        new Disj(Brother != Victim, Alice != Killer),
-                        new Disj(Son != Victim, Daughter != Killer),
-                        new Disj(Daughter != Victim, Son != Killer)
-                    },
+                    Husband != Victim, //the victim's twin must be amongst the 5 people, but the husband can't have one
+                    new Disj(Son != Killer, Daughter != Victim),
+                    new Disj(Son != Victim, Daughter != Killer),
+                    new Disj(Alice != Killer, Brother != Victim),
+                    new Disj(Alice != Victim, Brother != Killer),
 
-                    new Disj(Son != Victim, Daughter == Killer),
-                    new Disj(Daughter != Victim, Son == Killer),
-                    new Disj(Alice != Victim, new Disj(Son == Killer, Daughter == Killer)),
-                    new Disj(Husband != Victim, new Disj(Son == Killer, Daughter == Killer))
+                    //new Disj()
+                    //{
+                    //    new Impl(Alice == Victim, Brother != Killer),
+                    //    new Impl(Brother == Victim, Alice != Killer),
+                    //    new Impl(Son == Victim, Daughter != Killer),
+                    //    new Impl(Daughter == Victim, Son != Killer),
+                    //},
+
+                    new Impl(Son == Victim, new Conj(Alice != Killer, Husband != Killer)),
+                    new Impl(Daughter == Victim, new Conj(Alice != Killer, Husband != Killer)),
+                    //new Impl(Alice == Victim, new Disj(Son == Killer, Daughter == Killer)),
+                    //new Impl(Husband == Victim, new Disj(Son == Killer, Daughter == Killer)),
+
+                    //new XOR(Alice == BarMan, Alice == BarWoman, Alice == Killer, Alice == Victim, Alice == Loner),
+                    //new XOR(Husband == BarMan, Husband == BarWoman, Husband == Killer, Husband == Victim, Husband == Loner),
+                    //new XOR(Brother == BarMan, Brother == BarWoman, Brother == Killer, Brother == Victim, Brother == Loner),
+                    //new XOR(Son == BarMan, Son == BarWoman, Son == Killer, Son == Victim, Son == Loner),
+                    //new XOR(Daughter == BarMan, Daughter == BarWoman, Daughter == Killer, Daughter == Victim, Daughter == Loner),
+
+
             }));
         }
 
@@ -399,10 +449,10 @@ namespace DunKanren
 
             //Goal g = new CallFresh((x, y) => Appendo(x, y, "abc"));
 
-            //Goal g = new CallFresh((x, y, z, w) => new Conj() {
-            //    Appendo(x, y, z),
-            //    Appendo(z, w, "abcd")
-            //});
+            Goal g = new CallFresh((x, y, z, w) => new Conj() {
+                Appendo(x, y, z),
+                Appendo(z, w, "abcd")
+            });
 
             //Goal g = new CallFresh(x => Bijecto("hello world!", x));
 
@@ -410,7 +460,7 @@ namespace DunKanren
 
             //Goal g = new CallFresh(x => Membero(x, LCons.TructList('a', 'b', 'c')));
 
-            Goal g = new CallFresh(x => NotMembero('b', LCons.TructList('a', x, 'c')));
+            //Goal g = new CallFresh(x => Removeo('a', "abcd", x));
 
             //Goal g = new CallFresh(x => Reverseo(x, "abcd"));
 
@@ -430,7 +480,7 @@ namespace DunKanren
                     Console.WriteLine(iter.Current.ToString(1));
                     //Console.WriteLine(String.Join("\n", iter.Current.Subs.Select(x => $"{x.Key}: {x.Value}")));
                     Console.WriteLine();
-                    //Console.WriteLine(IO.Graft(g.ToTree()));
+                    Console.WriteLine(IO.Graft(g.ToTree()));
                     ++answers;
 
                     IO.Prompt(true);

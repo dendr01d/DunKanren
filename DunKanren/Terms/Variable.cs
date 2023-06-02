@@ -24,7 +24,7 @@ namespace DunKanren
             s.Subs.Add(this, this);
         }
 
-        public override int Ungroundedness => 1;
+        public override uint Ungroundedness => 1;
 
         public override Term Dereference(State s)
         {

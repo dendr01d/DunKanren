@@ -41,7 +41,7 @@ namespace DunKanren
             return nilCase(Term.NIL);
         }
 
-        public override int Ungroundedness => this.Deconstruct(r => r.Ungroundedness, n => n.Ungroundedness);
+        public override uint Ungroundedness => this.Deconstruct(r => r.Ungroundedness, n => n.Ungroundedness);
 
         public override bool SameAs(State s, Term other)
         {

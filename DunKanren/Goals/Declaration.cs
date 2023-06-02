@@ -34,18 +34,18 @@ namespace DunKanren.Goals
 
         public Fresh(IEnumerable<System.Reflection.ParameterInfo> newVars) : base(newVars) { }
 
-        internal override Func<State, Stream> GetApp()
+        internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return (State s) =>
+            return new(() => (State s) =>
             {
-                s.DeclareVars(out State newState, this.VariableNames);
-                return Stream.Singleton(newState);
-            };
+                s.Next().DeclareVars(out State newState, this.VariableNames);
+                return Stream.Singleton(newState.Next());
+            });
         }
 
-        internal override Func<State, Stream> GetNeg() => new Bottom().GetApp();
+        internal override Lazy<Func<State, Stream>> GetNeg() => new Bottom().GetApp();
 
-        public override int Ungroundedness => this.VariableNames.Length;
+        public override uint Ungroundedness => (uint)this.VariableNames.Length;
     }
 
     public sealed class CallFresh : Declaration
@@ -69,21 +69,21 @@ namespace DunKanren.Goals
             this.Constructor = constructor;
         }
 
-        internal override Func<State, Stream> GetApp()
+        internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return (State s) =>
+            return new(() => (State s) =>
             {
-                Variable[] newVars = s.DeclareVars(out State newState, this.VariableNames);
+                Variable[] newVars = s.Next().DeclareVars(out State newState, this.VariableNames);
                 Goal newGoal = Constructor(newVars);
 
                 this.DynamicExpression = $"ƒ({String.Join(", ", this.VariableNames)})";
                 this.DynamicDescription = $"Lambda on ({String.Join(", ", this.VariableNames)})";
 
-                return newGoal.PursueIn(newState.Next());
-            };
+                return newGoal.GetApp().Value(newState);
+            });
         }
 
-        internal override Func<State, Stream> GetNeg() => new Bottom().GetApp();
+        internal override Lazy<Func<State, Stream>> GetNeg() => new Bottom().GetApp();
 
         public CallFresh(Func<Goal> lambda) :
             this(lambda.Method, (v) => lambda())
@@ -121,7 +121,7 @@ namespace DunKanren.Goals
             this(lambda.Method, (v) => lambda(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]))
         { }
 
-        public override int Ungroundedness => -1 * this.VariableNames.Length;
+        public override uint Ungroundedness => (uint)this.VariableNames.Length;
     }
 
 

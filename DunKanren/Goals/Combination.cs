@@ -4,12 +4,12 @@ using System.Linq;
 
 namespace DunKanren.Goals
 {
-    public abstract class Combination<T> : Goal<T>, ICollectionInitialized<T>
+    public abstract class Combination<T> : Goal<T>
         where T : Goal
     {
         protected Combination(params T[] goals)
         {
-            this.Subs = goals.Select(x => Lazify(x)).ToList();
+            this.Subs = goals.ToList();
         }
 
         public override Stream PursueIn(State s)
@@ -22,14 +22,11 @@ namespace DunKanren.Goals
             return base.PursueIn(s);
         }
 
-        public void Add(T goal)
-        {
-            this.Subs.Add(new Lazy<T>(() => goal));
-        }
-
         protected Lazy<T> Lazify(T g) => new Lazy<T>(() => g);
 
-        public override int Ungroundedness => this.Subs.Sum(x => x.Value.Ungroundedness);
+        public void Add(T item) => this.Subs.Add(item);
+
+        public override uint Ungroundedness => (uint)this.Subs.Sum(x => x.Ungroundedness);
     }
 
     /// <summary>
@@ -43,14 +40,14 @@ namespace DunKanren.Goals
 
         public Conjunction(params T[] goals) : base(goals) { }
 
-        internal override Func<State, Stream> GetApp()
+        internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return (State s) => this.Subs.Select(x => x.Value.GetApp()).Aggregate(Conjunction<T>.Aggregate)(s);
+            return new (() => (State s) => this.Subs.Select(x => x.GetApp().Value).Aggregate(Conjunction<T>.Aggregate)(s));
         }
 
-        internal override Func<State, Stream> GetNeg()
+        internal override Lazy<Func<State, Stream>> GetNeg()
         {
-            return (State s) => this.Subs.Order().Select(x => x.Value.GetNeg()).Aggregate(Disjunction<T>.Aggregate)(s);
+            return new (() => (State s) => this.Subs.Select(x => x.GetNeg().Value).Aggregate(Disjunction<T>.Aggregate)(s));
         }
 
         public static Func<State, Stream> Aggregate(Func<State, Stream> g1, Func<State, Stream> g2)
@@ -91,14 +88,14 @@ namespace DunKanren.Goals
 
         public Disjunction(params T[] goals) : base(goals) { }
 
-        internal override Func<State, Stream> GetApp()
+        internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return (State s) => this.Subs.Select(x => x.Value.GetApp()).Aggregate(Disjunction<T>.Aggregate)(s);
+            return new(() => (State s) => this.Subs.Select(x => x.GetApp().Value).Aggregate(Disjunction<T>.Aggregate)(s));
         }
 
-        internal override Func<State, Stream> GetNeg()
+        internal override Lazy<Func<State, Stream>> GetNeg()
         {
-            return (State s) => this.Subs.Order().Select(x => x.Value.GetNeg()).Aggregate(Conjunction<T>.Aggregate)(s);
+            return new(() => (State s) => this.Subs.Select(x => x.GetNeg().Value).Aggregate(Conjunction<T>.Aggregate)(s));
         }
 
         public static Func<State, Stream> Aggregate(Func<State, Stream> g1, Func<State, Stream> g2)

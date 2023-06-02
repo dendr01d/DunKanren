@@ -23,14 +23,18 @@ namespace DunKanren.Goals
             this.Implicand = conclusion;
         }
 
-        internal override Func<State, Stream> GetApp()
+        internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return (State s) => Disjunction<T>.Aggregate(this.Implicand.GetApp(), this.Subs.Select(x => x.Value.GetNeg()).Aggregate(Disjunction<T>.Aggregate))(s);
+            return new(() => (State s) => Disjunction<T>
+            .Aggregate(this.Implicand.GetNeg().Value, this.Subs.Select(x => x.GetApp().Value)
+            .Aggregate(Disjunction<T>.Aggregate))(s));
         }
 
-        internal override Func<State, Stream> GetNeg()
+        internal override Lazy<Func<State, Stream>> GetNeg()
         {
-            return (State s) => Conjunction<T>.Aggregate(this.Implicand.GetNeg(), this.Subs.Select(x => x.Value.GetApp()).Aggregate(Conjunction<T>.Aggregate))(s);
+            return new(() => (State s) => Conjunction<T>
+            .Aggregate(this.Implicand.GetApp().Value, this.Subs.Select(x => x.GetNeg().Value)
+                .Aggregate(Conjunction<T>.Aggregate))(s));
         }
     }
 
@@ -47,18 +51,18 @@ namespace DunKanren.Goals
 
         public BiImplication(params T[] goals) : base(goals) { }
 
-        internal override Func<State, Stream> GetApp()
+        internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return (State s) => Disjunction<T>.Aggregate(
-                    this.Subs.Select(x => x.Value.GetApp()).Aggregate(Conjunction<T>.Aggregate),
-                    this.Subs.Select(x => x.Value.GetNeg()).Aggregate(Conjunction<T>.Aggregate))(s);
+            return new(() => (State s) => Disjunction<T>.Aggregate(
+                    this.Subs.Select(x => x.GetApp().Value).Aggregate(Conjunction<T>.Aggregate),
+                    this.Subs.Select(x => x.GetNeg().Value).Aggregate(Conjunction<T>.Aggregate))(s));
         }
 
-        internal override Func<State, Stream> GetNeg()
+        internal override Lazy<Func<State, Stream>> GetNeg()
         {
-            return (State s) => Conjunction<T>.Aggregate(
-                    this.Subs.Select(x => x.Value.GetNeg()).Aggregate(Disjunction<T>.Aggregate),
-                    this.Subs.Select(x => x.Value.GetApp()).Aggregate(Disjunction<T>.Aggregate))(s);
+            return new(() => (State s) => Conjunction<T>.Aggregate(
+                    this.Subs.Select(x => x.GetNeg().Value).Aggregate(Disjunction<T>.Aggregate),
+                    this.Subs.Select(x => x.GetApp().Value).Aggregate(Disjunction<T>.Aggregate))(s));
         }
     }
 
@@ -75,41 +79,41 @@ namespace DunKanren.Goals
 
         public ExclusiveDisjunction(params T[] goals) : base(goals) { }
 
-        internal override Func<State, Stream> GetApp()
+        internal override Lazy<Func<State, Stream>> GetApp()
         {
             List<Func<State, Stream>> subApps = new();
 
             //for every pair of subgoals, assert that one of them must be false
             for (int i = 0; i < this.Subs.Count() - 1; ++i)
             {
-                for (int j = i + 1; j < this.Subs.Count(); ++i)
+                for (int j = i + 1; j < this.Subs.Count(); ++j)
                 {
-                    subApps.Add(Disjunction<T>.Aggregate(this.Subs[i].Value.GetNeg(), this.Subs[j].Value.GetNeg()));
+                    subApps.Add(Disjunction<T>.Aggregate(this.Subs[i].GetNeg().Value, this.Subs[j].GetNeg().Value));
                 }
             }
 
             //assert that at least one of the subgoals is true
-            subApps.Add(this.Subs.Select(x => x.Value.GetApp()).Aggregate(Disjunction<T>.Aggregate));
+            subApps.Add(this.Subs.Select(x => x.GetApp().Value).Aggregate(Disjunction<T>.Aggregate));
 
             //conjoin all of these assertions
-            return subApps.Aggregate(Conjunction<T>.Aggregate);
+            return new(() => subApps.Aggregate(Conjunction<T>.Aggregate));
         }
 
-        internal override Func<State, Stream> GetNeg()
+        internal override Lazy<Func<State, Stream>> GetNeg()
         {
             List<Func<State, Stream>> subApps = new();
 
             //for every pair of subgoals, assert that both of them must be true
             for (int i = 0; i < this.Subs.Count() - 1; ++i)
             {
-                for (int j = i + 1; j < this.Subs.Count(); ++i)
+                for (int j = i + 1; j < this.Subs.Count(); ++j)
                 {
-                    subApps.Add(Conjunction<T>.Aggregate(this.Subs[i].Value.GetApp(), this.Subs[j].Value.GetApp()));
+                    subApps.Add(Conjunction<T>.Aggregate(this.Subs[i].GetApp().Value, this.Subs[j].GetApp().Value));
                 }
             }
 
             //assert that any one of these dual-assertions must be true
-            return subApps.Aggregate(Disjunction<T>.Aggregate);
+            return new(() => subApps.Aggregate(Disjunction<T>.Aggregate));
         }
     }
 
