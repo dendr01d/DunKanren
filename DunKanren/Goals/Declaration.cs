@@ -64,7 +64,7 @@ namespace DunKanren.Goals
         {
             //string varNames = String.Join(", ", body.GetParameters().Select(x => x.Name));
             this.DynamicExpression = $"ƒ(?)";
-            this.DynamicDescription = $"Unevaluated Lambda";
+            this.DynamicDescription = $"{{Unevaluated Lambda}}";
 
             this.Constructor = constructor;
         }
@@ -77,7 +77,8 @@ namespace DunKanren.Goals
                 Goal newGoal = Constructor(newVars);
 
                 this.DynamicExpression = $"ƒ({String.Join(", ", this.VariableNames)})";
-                this.DynamicDescription = $"Lambda on ({String.Join(", ", this.VariableNames)})";
+                this.DynamicDescription = $"Lambda over ({String.Join(", ", this.VariableNames)})";
+                this.DynamicChild = new[] { newGoal };
 
                 return newGoal.GetApp().Value(newState);
             });

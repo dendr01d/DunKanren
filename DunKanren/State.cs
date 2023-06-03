@@ -272,10 +272,16 @@ namespace DunKanren
         {
             StringBuilder sb = new();
 
+            List<Term> constraints = new();
+            this.Reify(pair.Key, ref constraints);
+
+            Term result = pair.Key.Dereference(this);
+
             sb.Append('\t');
             sb.Append(pair.Key.ToString().PadLeft(this.KeyWidth + 3));
             sb.Append(" => ");
-            sb.Append(pair.Value.Dereference(this));
+            sb.Append(result is Variable ? "<Any>" : result.ToString());
+            if (constraints.Any()) sb.Append($" ¬({String.Join(", ", constraints.Select(x => x.ToString()))})");
 
             return sb.ToString();
         }

@@ -42,12 +42,16 @@ namespace DunKanren.Goals
 
         internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return new (() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetApp().Value).Aggregate(Conjunction<T>.Aggregate)(s));
+            return this.Subs.Count() > 1
+            ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetApp().Value).Aggregate(Conjunction<T>.Aggregate)(s))
+            : new(() => (State s) => this.Subs.First().GetApp().Value(s));
         }
 
         internal override Lazy<Func<State, Stream>> GetNeg()
         {
-            return new (() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetNeg().Value).Aggregate(Disjunction<T>.Aggregate)(s));
+            return this.Subs.Count() > 1
+            ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetNeg().Value).Aggregate(Disjunction<T>.Aggregate)(s))
+            : new(() => (State s) => this.Subs.First().GetNeg().Value(s));
         }
 
         public static Func<State, Stream> Aggregate(Func<State, Stream> g1, Func<State, Stream> g2)
@@ -90,12 +94,16 @@ namespace DunKanren.Goals
 
         internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetApp().Value).Aggregate(Disjunction<T>.Aggregate)(s));
+            return this.Subs.Count() > 1
+            ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetApp().Value).Aggregate(Disjunction<T>.Aggregate)(s))
+            : new(() => (State s) => this.Subs.First().GetApp().Value(s));
         }
 
         internal override Lazy<Func<State, Stream>> GetNeg()
         {
-            return new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetNeg().Value).Aggregate(Conjunction<T>.Aggregate)(s));
+            return this.Subs.Count() > 1
+            ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetNeg().Value).Aggregate(Conjunction<T>.Aggregate)(s))
+            : new(() => (State s) => this.Subs.First().GetNeg().Value(s));
         }
 
         public static Func<State, Stream> Aggregate(Func<State, Stream> g1, Func<State, Stream> g2)

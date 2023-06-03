@@ -122,9 +122,9 @@ namespace DunKanren
 
         static Goal Bijecto(Term collA, Term collB)
         {
-            static Goal helper(Term _collA, Term _collB)
+            Goal helper(Term _collA, Term _collB)
             {
-                return new XOR()
+                return new Disj()
                 {
                     _collA == _collB,
                     new CallFresh((firstA, restA, firstB, restB) => new Conj()
@@ -133,17 +133,12 @@ namespace DunKanren
                         Conso(firstB, restB, _collB),
                         new Disj()
                         {
-                            new Conj()
-                            {
-                                firstA == firstB,
-                                NotMembero(firstA, restB),
-                                NotMembero(firstB, restA)
-                            },
+                            firstA == firstB,
                             new Conj()
                             {
                                 firstA != firstB,
-                                Membero(firstA, restB),
-                                Membero(firstB, restA)
+                                Membero(firstA, collB),
+                                Membero(firstB, collA)
                             }
                         },
                         helper(restA, restB)
@@ -443,22 +438,24 @@ namespace DunKanren
 
         static void Main()
         {
-            //Goal g = MurderPuzzle();
+            Goal g = MurderPuzzle();
 
             //Goal g = new CallFresh((x, y) => new Conj(x == 5, y == 6));
 
             //Goal g = new CallFresh((x, y) => Appendo(x, y, "abc"));
 
-            Goal g = new CallFresh((x, y, z, w) => new Conj() {
-                Appendo(x, y, z),
-                Appendo(z, w, "abcd")
-            });
+            //Goal g = new CallFresh((x, y, z, w) => new Conj() {
+            //    Appendo(x, y, z),
+            //    Appendo(z, w, "abcd")
+            //});
 
-            //Goal g = new CallFresh(x => Bijecto("hello world!", x));
+            //Goal g = new CallFresh(x => Bijecto("abc", x));
 
             //Goal g = new CallFresh(x => Sharedo("abc", x));
 
             //Goal g = new CallFresh(x => Membero(x, LCons.TructList('a', 'b', 'c')));
+
+            //Goal g = new CallFresh(x => NotMembero('b', LCons.TructList('a', x, 'c')));
 
             //Goal g = new CallFresh(x => Removeo('a', "abcd", x));
 
@@ -479,6 +476,7 @@ namespace DunKanren
                     Console.WriteLine("--------------------------------------------------\n");
                     Console.WriteLine(iter.Current.ToString(1));
                     //Console.WriteLine(String.Join("\n", iter.Current.Subs.Select(x => $"{x.Key}: {x.Value}")));
+                    IO.Prompt(true);
                     Console.WriteLine();
                     Console.WriteLine(IO.Graft(g.ToTree()));
                     ++answers;

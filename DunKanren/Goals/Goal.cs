@@ -24,7 +24,7 @@ namespace DunKanren.Goals
         public string ToVerboseString() => this.Description;
 
         public IEnumerable<string> ToTree() => ToTree("", true, false);
-        public IEnumerable<string> ToTree(string prefix, bool first, bool last)
+        public virtual IEnumerable<string> ToTree(string prefix, bool first, bool last)
         {
             string parentPrefix = first ? "" : prefix + (last ? IO.LEAVES : IO.BRANCH);
             string childPrefix = first ? "" : prefix + (last ? IO.SPACER : IO.JUMPER);

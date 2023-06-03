@@ -51,10 +51,6 @@ namespace DunKanren
             => s.TryExtend(this, other, out result);
 
         public override string ToString() => this.Symbol + "#" + this.RecursionLevel;
-        public override IEnumerable<string> ToTree(string prefix, bool first, bool last)
-        {
-            yield return prefix + IO.BRANCH + this.ToString();
-        }
 
         public override int GetHashCode() => this.ID;
 
