@@ -113,23 +113,23 @@ namespace DunKanren
 
         private static bool VerifyConstraints(ref State result)
         {
-            //foreach(var kvp in result.Negs)
-            //{
-            //    Variable lastKey = kvp.Key;
+            foreach (var kvp in result.Negs)
+            {
+                Variable lastKey = kvp.Key;
 
-            //    while (lastKey.Dereference(result) is Variable t && !t.Equals(lastKey))
-            //    {
-            //        if (result.Subs.TryGetValue(lastKey, out Term? tDef)
-            //            && !ReferenceEquals(tDef, null)
-            //            && kvp.Value.Contains(tDef))
-            //        {
-            //            result = State.InitialState();
-            //            return false;
-            //        }
+                while (lastKey.Dereference(result) is Variable t && !t.Equals(lastKey))
+                {
+                    if (result.Subs.TryGetValue(lastKey, out Term? tDef)
+                        && !ReferenceEquals(tDef, null)
+                        && kvp.Value.Contains(tDef))
+                    {
+                        result = State.InitialState();
+                        return false;
+                    }
 
-            //        lastKey = t;
-            //    }
-            //}
+                    lastKey = t;
+                }
+            }
 
             return true;
         }
@@ -138,7 +138,7 @@ namespace DunKanren
         {
             result = this;
             IO.Debug_Print(u.ToString() + " EQL " + v.ToString() + " in " + result.ToString());
-            return true;            
+            return true;
         }
 
         public bool Reject(Term u, Term v, out State result)

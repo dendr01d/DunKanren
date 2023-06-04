@@ -19,12 +19,13 @@ namespace DunKanren
 
         public virtual Term Dereference(State s) => this;
 
+        public Term Identity => this;
 
         #region Equivalence
         public abstract bool SameAs(State s, Term other);
 
         public virtual bool SameAs(State s, Variable other) => false;
-        public virtual bool SameAs<D>(State s, Variable<D> other) => false;
+        public virtual bool SameAs<D>(State s, Variable<D> other) where D : Term => false;
         public virtual bool SameAs<D>(State s, Value<D> other) => false;
         public virtual bool SameAs(State s, Number other) => false;
         public virtual bool SameAs(State s, Nil other) => false;
@@ -50,7 +51,6 @@ namespace DunKanren
             other.SameAs(s, this)
             ? s.Affirm(other, this, out result)
             : s.TryExtend(other, this, out result);
-        public virtual bool TryUnifyWith<D>(State s, Variable<D> other, out State result) => s.Reject(other, this, out result);
 
         public virtual bool TryUnifyWith<D>(State s, Value<D> other, out State result) => s.Reject(other, this, out result);
         public virtual bool TryUnifyWith(State s, Number other, out State result) => s.Reject(other, this, out result);
@@ -61,9 +61,26 @@ namespace DunKanren
             where D2 : Term
         {
             return s.Reject(other, this, out result);
-        } 
-        //public virtual State? UnifyWith<T>(State s, Cont<T> other) where T : Term => s.Reject(other, this);
-        //public virtual bool TryUnifyWith(State s, Seq other, out State result) => s.Reject(other, this, out result);
+        }
+
+        public virtual bool TryUnifyWith<T>(State s, IUnifiable<T> other, out State result) where T : Term => s.Reject(other.Identity, this, out result);
+
+        public virtual bool TryUnifyWith<T>(State s, Variable<T> other, out State result) where T : Term =>
+            other.SameAs(s, this)
+            ? s.Affirm(other, this, out result)
+            : s.TryExtend(other, this, out result);
+
+        public virtual bool TryUnifyWith(State s, Variable<Variable> other, out State result) => other.TryUnifyWith(s, this, out result);
+        public virtual bool TryUnifyWith<D>(State s, Variable<Value<D>> other, out State result) => other.TryUnifyWith(s, this, out result);
+        public virtual bool TryUnifyWith(State s, Variable<Number> other, out State result) => other.TryUnifyWith(s, this, out result);
+        public virtual bool TryUnifyWith(State s, Variable<Nil> other, out State result) => s.Reject(other, this, out result);
+        public virtual bool TryUnifyWith(State s, Variable<LCons> other, out State result) => other.TryUnifyWith(s, this, out result);
+        public virtual bool TryUnifyWith<D1, D2>(State s, Variable<Cons<D1, D2>> other, out State result)
+            where D1 : Term
+            where D2 : Term
+        {
+            return other.TryUnifyWith(s, this, out result);
+        }
 
         #endregion
 

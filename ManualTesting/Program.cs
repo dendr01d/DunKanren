@@ -4,10 +4,17 @@ namespace DunKanren
 {
     internal class Program
     {
+        static Goal Groundo(Term t)
+        {
+            return new Ground(t);
+        }
+
         static Goal Conso(Term car, Term cdr, Term cons)
         {
             return new Conj()
             {
+                Groundo(car),
+                Groundo(cons),
                 LCons.Truct(car, cdr) == cons
             };
         }
@@ -36,7 +43,20 @@ namespace DunKanren
 
         static Goal Membero(Term a, Term coll)
         {
-            return new CallFresh((first, rest) => new Conj(Conso(first, rest, coll), coll != Term.NIL, first != Term.NIL, Goal.OR(a == first, Membero(a, rest))));
+            return new CallFresh((first, rest) => new Conj() {
+                coll != Term.NIL,
+                Conso(first, rest, coll),
+                first != Term.NIL,
+                new Disj()
+                {
+                    a == first,
+                    new Conj()
+                    {
+                        rest != Term.NIL,
+                        Membero(a, rest)
+                    }
+                }
+            });
         }
 
         static Goal NotMembero(Term a, Term coll)
@@ -324,30 +344,6 @@ namespace DunKanren
         //            })));
         //}
 
-        private struct Person
-        {
-            public enum Name { Alice, Husband, Son, Daughter, Brother };
-            public enum KillerStatus { Killer, Victim, Bystander };
-            public enum Location { Beach, Bar, Elsewhere };
-            public enum Sex { Man, Woman };
-
-            public Name Identity;
-            public Name Sibling;
-            public bool Twins;
-            public Location Place;
-            public Sex Gender;
-            public KillerStatus Role;
-
-            public Person (Name id, Name sib, bool twins, Location pl, KillerStatus role)
-            {
-                this.Identity = id;
-                this.Sibling = sib;
-                this.Twins = twins;
-                this.Place = pl;
-                this.Role = role;
-            }
-        }
-
         /*
          Alice, Husband, Son, Daughter, Brother
          Exactly one of these people is a killer
@@ -372,6 +368,7 @@ namespace DunKanren
         //https://leanprover.github.io/logic_and_proof/propositional_logic.html
         public static Goal MurderPuzzle()
         {
+
             return
                 new CallFresh((Alice, Husband, Brother, Son, Daughter) =>
                 new CallFresh((BarMan, BarWoman, Killer, Victim, Loner) =>
@@ -379,8 +376,19 @@ namespace DunKanren
             {
                     Bijecto(LCons.TructList(Alice, Husband, Brother, Son, Daughter), LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
 
-                    Membero(BarMan, LCons.TructList(Husband, Brother, Son)),
-                    Membero(BarWoman, LCons.TructList(Alice, Daughter)),
+                    new Disj()
+                    {
+                        BarMan == Husband,
+                        BarMan == Brother,
+                        BarMan == Son,
+                    },
+                    new Disj()
+                    {
+                        BarWoman == Alice,
+                        BarWoman == Daughter,
+                    },
+                    //Membero(BarMan, LCons.TructList(Husband, Brother, Son)),
+                    //Membero(BarWoman, LCons.TructList(Alice, Daughter)),
 
                     new Disj()
                     {

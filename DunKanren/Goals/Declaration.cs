@@ -47,6 +47,8 @@ namespace DunKanren.Goals
         }
 
         public override int Ungroundedness => this.VariableNames.Length;
+
+        protected override Type NonReflectiveType => typeof(Fresh);
     }
 
     public sealed class CallFresh : Declaration
@@ -58,6 +60,8 @@ namespace DunKanren.Goals
         private string DynamicExpression;
         private string DynamicDescription;
         private IEnumerable<IPrintable> DynamicChild = Array.Empty<IPrintable>();
+
+        protected override Type NonReflectiveType => typeof(CallFresh);
 
         private Func<State, Stream> ApplicationFunc;
 

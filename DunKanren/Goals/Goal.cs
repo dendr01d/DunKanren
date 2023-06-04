@@ -85,10 +85,12 @@ namespace DunKanren.Goals
             typeof(CallFresh)
         };
 
+        protected abstract Type NonReflectiveType { get; }
+
         public static int Compare(Goal g1, Goal g2)
         {
-            if (Priority.IndexOf(g1.GetType()) is int p1
-                && Priority.IndexOf(g2.GetType()) is int p2
+            if (Priority.IndexOf(g1.NonReflectiveType) is int p1
+                && Priority.IndexOf(g2.NonReflectiveType) is int p2
                 && p1 != p2)
             {
                 return p1.CompareTo(p2);
@@ -124,7 +126,7 @@ namespace DunKanren.Goals
 
         public static Goal XOR(Goal g1, Goal g2)
         {
-            return AND(OR(g1, g2), AND(g1, g2).Negate());
+            return AND(OR(g1, g2), NOT(AND(g1, g2)));
         }
     }
 
@@ -141,6 +143,8 @@ namespace DunKanren.Goals
         //public override bool? LogicalDeterminate => true;
 
         public override int Ungroundedness => 0;
+
+        protected override Type NonReflectiveType => typeof(Top);
     }
 
     /// <summary>
@@ -156,6 +160,8 @@ namespace DunKanren.Goals
         //public override bool? LogicalDeterminate => false;
 
         public override int Ungroundedness => 0;
+
+        protected override Type NonReflectiveType => typeof(Bottom);
     }
 
     public class Not : Goal
@@ -172,6 +178,39 @@ namespace DunKanren.Goals
         public override Goal Negate() => this.Original;
 
         public override int Ungroundedness => this.Original.Ungroundedness;
+
+        protected override Type NonReflectiveType => typeof(Not);
+    }
+
+    public class Ground : Goal
+    {
+        public override string Expression => $"¿ {this.Binding} ?";
+        public override string Description => "The term '{this.Binding}' is bound to a grounded value";
+        public override IEnumerable<IPrintable> ChildGoals => Array.Empty<IPrintable>();
+
+        private readonly Term Binding;
+
+        public Ground(Term t)
+        {
+            this.Binding = t;
+        }
+        protected override Stream Application(State s)
+        {
+            if (!s.Walk(this.Binding).Equals(this.Binding))
+            {
+                return Stream.Singleton(s);
+            }
+
+            return Stream.Empty();
+        }
+        public override Goal Negate()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override int Ungroundedness => this.Binding.Ungroundedness;
+
+        protected override Type NonReflectiveType => typeof(Equality);
     }
 
     /// <summary>

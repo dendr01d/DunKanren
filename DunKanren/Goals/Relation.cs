@@ -57,6 +57,8 @@ namespace DunKanren.Goals
 
             return Stream.Empty();
         }
+
+        protected override Type NonReflectiveType => typeof(Equality);
     }
 
     /// <summary>
@@ -83,5 +85,7 @@ namespace DunKanren.Goals
 
             return Stream.Empty();
         }
+
+        protected override Type NonReflectiveType => typeof(Disequality);
     }
 }

@@ -44,6 +44,8 @@ namespace DunKanren.Goals
 
         public Conjunction(params T[] goals) : base(goals) { }
 
+        protected override Type NonReflectiveType => typeof(Conj);
+
         public override Goal Negate()
         {
             return new Disjunction<Goal>(this.SubGoals.Select(x => x.Negate()).ToArray());
@@ -97,6 +99,8 @@ namespace DunKanren.Goals
         public override string Description => "At least one of the following is true";
 
         public Disjunction(params T[] goals) : base(goals) { }
+
+        protected override Type NonReflectiveType => typeof(Disj);
 
         public override Goal Negate()
         {

@@ -3,7 +3,7 @@ using System.Text;
 
 namespace DunKanren
 {
-    public class Cons<T1, T2> : Term
+    public class Cons<T1, T2> : Term, IUnifiable<Cons<T1, T2>>
         where T1 : Term
         where T2 : Term
     {
@@ -41,6 +41,11 @@ namespace DunKanren
                 && this.Cdr.TryUnifyWith(result, other.Cdr, out result);
         }
 
+        public override bool TryUnifyWith<D1, D2>(State s, Variable<Cons<D1, D2>> other, out State result)
+        {
+            return s.TryExtend(other, this, out result);
+        }
+
         public override string ToString()
         {
             if (this.IsString)
@@ -56,6 +61,12 @@ namespace DunKanren
                 return $"( {this.Car} . {this.Cdr} )";
             }
         }
+
+        public bool TryUnifyWith(State s, Cons<T1, T2> other, out State result) => this.TryUnifyWith<T1, T2>(s, other, out result);
+
+        public bool TryUnifyWith(State s, Variable<Cons<T1, T2>> other, out State result) => s.TryExtend(other, this, out result);
+
+        public bool TryUnifyWith(State s, IUnifiable<Cons<T1, T2>> other, out State result) => other.TryUnifyWith(s, this, out result);
     }
 
     public class ConsCell : Cons<Term, Term>
@@ -198,7 +209,7 @@ namespace DunKanren
         }
     }
 
-    public class LCons : Term
+    public class LCons : Term, IUnifiable<LCons>
     {
         public Term Car { get; init; }
         public Term Cdr { get; init; }
@@ -271,6 +282,8 @@ namespace DunKanren
             return this.Car.TryUnifyWith(s, other.Car, out result)
                 && this.Cdr.TryUnifyWith(result, other.Cdr, out result);
         }
+
+        public bool TryUnifyWith(State s, IUnifiable<LCons> other, out State result) => other.TryUnifyWith(s, this, out result);
 
         public override string ToString()
         {

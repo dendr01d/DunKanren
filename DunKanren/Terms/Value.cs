@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace DunKanren
 {
-    public class Value<D> : Term
+    public class Value<D> : Term, IUnifiable<Value<D>>
     {
         private readonly D Data;
 
@@ -27,6 +27,12 @@ namespace DunKanren
             : s.Reject(other, this, out result);
 
         public override string ToString() => this.Data?.ToString() ?? "<UNK?>";
+
+        public bool TryUnifyWith(State s, Value<D> other, out State result) => this.TryUnifyWith<D>(s, other, out result);
+
+        public bool TryUnifyWith(State s, Variable<Value<D>> other, out State result) => s.TryExtend(other, this, out result);
+
+        public bool TryUnifyWith(State s, IUnifiable<Value<D>> other, out State result) => other.TryUnifyWith(s, this, out result);
     }
 
     public static class ValueFactory

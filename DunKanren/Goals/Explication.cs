@@ -31,6 +31,8 @@ namespace DunKanren.Goals
             }
         }
 
+        protected override Type NonReflectiveType => typeof(Impl);
+
         protected override Stream Application(State s)
         {
             if (ReferenceEquals(this.Implicand, null))
@@ -70,6 +72,8 @@ namespace DunKanren.Goals
         public override string Description => "All of the following statements are either all true or all false";
 
         public BiImplication(params T[] goals) : base(goals) { }
+
+        protected override Type NonReflectiveType => typeof(BImp);
 
         protected override Stream Application(State s)
         {
@@ -124,6 +128,8 @@ namespace DunKanren.Goals
                 this.Add(goal);
             }
         }
+
+        protected override Type NonReflectiveType => typeof(XOR);
 
         protected override Stream Application(State s)
         {
