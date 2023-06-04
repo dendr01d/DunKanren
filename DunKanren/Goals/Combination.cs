@@ -4,21 +4,17 @@ using System.Linq;
 
 namespace DunKanren.Goals
 {
-    public abstract class Combination<T> : Goal<T>, ICollectionInitialized<T>
+    public abstract class Combination<T> : Goal<T>
         where T : Goal
     {
-        protected virtual List<T> SubGoals { get; private set; } = new();
-
-        public override IEnumerable<IPrintable> ChildGoals => this.SubGoals;
-
         protected Combination(params T[] goals)
         {
-            this.SubGoals = goals.ToList();
+            this.Subs = goals.ToList();
         }
 
         public override Stream PursueIn(State s)
         {
-            if (!this.SubGoals.Any())
+            if (!this.Subs.Any())
             {
                 return Stream.Empty();
             }
@@ -26,11 +22,11 @@ namespace DunKanren.Goals
             return base.PursueIn(s);
         }
 
-        public override IEnumerator<T> GetEnumerator() => this.SubGoals.GetEnumerator();
+        protected Lazy<T> Lazify(T g) => new Lazy<T>(() => g);
 
-        public abstract void Add(T goal);
+        public void Add(T item) => this.Subs.Add(item);
 
-        public override int Ungroundedness => this.SubGoals.Sum(x => x.Ungroundedness);
+        public override uint Ungroundedness => (uint)this.Subs.Sum(x => x.Ungroundedness);
     }
 
     /// <summary>
@@ -39,28 +35,24 @@ namespace DunKanren.Goals
     public class Conjunction<T> : Combination<T>
         where T : Goal
     {
-        public override string Expression => String.Join(" && ", this.ChildGoals);
-        public override string Description => "Both of the following are true";
+        public override string Expression => String.Join(" && ", this.SubExpressions);
+        public override string Description => "All of the following are true";
 
         public Conjunction(params T[] goals) : base(goals) { }
 
-        protected override Type NonReflectiveType => typeof(Conj);
-
-        public override Goal Negate()
+        internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return new Disjunction<Goal>(this.SubGoals.Select(x => x.Negate()).ToArray());
+            return this.Subs.Count() > 1
+            ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetApp().Value).Aggregate(Conjunction<T>.Aggregate)(s))
+            : new(() => (State s) => this.Subs.First().GetApp().Value(s));
         }
 
-        protected override Stream Application(State s)
+        internal override Lazy<Func<State, Stream>> GetNeg()
         {
-            return Stream.New(
-                this.SubGoals
-                .Order()
-                .Aggregate(Stream.Singleton(s),
-                    (xStr, xG) => Stream.New(xStr.SelectMany(xS => xG.PursueIn(xS)))));
+            return this.Subs.Count() > 1
+            ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetNeg().Value).Aggregate(Disjunction<T>.Aggregate)(s))
+            : new(() => (State s) => this.Subs.First().GetNeg().Value(s));
         }
-
-        public override void Add(T goal) => this.SubGoals.Add(goal);
 
         public static Func<State, Stream> Aggregate(Func<State, Stream> g1, Func<State, Stream> g2)
         {
@@ -95,24 +87,24 @@ namespace DunKanren.Goals
     public class Disjunction<T> : Combination<T>
         where T : Goal
     {
-        public override string Expression => String.Join(" || ", this.ChildGoals);
+        public override string Expression => String.Join(" || ", this.SubExpressions);
         public override string Description => "At least one of the following is true";
 
         public Disjunction(params T[] goals) : base(goals) { }
 
-        protected override Type NonReflectiveType => typeof(Disj);
-
-        public override Goal Negate()
+        internal override Lazy<Func<State, Stream>> GetApp()
         {
-            return new Conjunction<Goal>(this.SubGoals.Select(x => x.Negate()).ToArray());
+            return this.Subs.Count() > 1
+            ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetApp().Value).Aggregate(Disjunction<T>.Aggregate)(s))
+            : new(() => (State s) => this.Subs.First().GetApp().Value(s));
         }
 
-        protected override Stream Application(State s)
+        internal override Lazy<Func<State, Stream>> GetNeg()
         {
-            return Stream.New(this.SubGoals.Select(x => x.PursueIn(s)).Aggregate(Stream.Interleave));
+            return this.Subs.Count() > 1
+            ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetNeg().Value).Aggregate(Conjunction<T>.Aggregate)(s))
+            : new(() => (State s) => this.Subs.First().GetNeg().Value(s));
         }
-
-        public override void Add(T goal) => this.SubGoals.Add(goal);
 
         public static Func<State, Stream> Aggregate(Func<State, Stream> g1, Func<State, Stream> g2)
         {

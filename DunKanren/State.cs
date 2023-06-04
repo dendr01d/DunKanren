@@ -9,14 +9,16 @@ using System.Threading.Tasks;
 
 namespace DunKanren
 {
-    public class State : IPrintable
+    public class State : IPrintable, IGrounded
     {
         public readonly Dictionary<Variable, Term> Subs;
         public readonly Dictionary<Variable, HashSet<Term>> Negs;
 
         public int VariableCounter;
         public readonly int RecursionLevel;
-        
+
+        private int KeyWidth => this.Subs.Keys.Max(x => x.Symbol.Length);
+
         private State()
         {
             this.Subs = new Dictionary<Variable, Term>();
@@ -25,7 +27,7 @@ namespace DunKanren
             this.RecursionLevel = 0;
         }
 
-        private State(State s, bool recursing)
+        private State(State s, bool recursing) : this()
         {
             this.Subs = new Dictionary<Variable, Term>(s.Subs);
             this.Negs = s.Negs.ToDictionary(x => x.Key, x => new HashSet<Term>(x.Value));
@@ -40,7 +42,8 @@ namespace DunKanren
 
         public State Dupe() => new(this, false);
 
-        public int Ungroundedness => this.Subs.Count(x => x.Key.Equals(x.Value));
+        public uint Ungroundedness => (uint)this.Subs.Sum(x => x.Value.Ungroundedness);
+        public int CompareTo(IGrounded? other) => this.Ungroundedness.CompareTo(other?.Ungroundedness ?? 0);
 
         public Variable[] DeclareVars(out State result, params string[] varNames)
         {
@@ -61,6 +64,29 @@ namespace DunKanren
         public Term Walk(Term t)
         {
             return t.Dereference(this);
+        }
+
+        public Term Reify(Term original, ref List<Term> constraints)
+        {
+            if (original is Variable v)
+            {
+                if (this.Negs.TryGetValue(v, out var negs))
+                {
+                    constraints.AddRange(negs);
+                }
+
+                if (this.Subs.TryGetValue(v, out Term? t) && !t.Equals(null) && !t.Equals(original))
+                {
+                    return Reify(t, ref constraints);
+                }
+            }
+
+            return original;
+        }
+
+        public Term? LookupBySymbol(string symbol)
+        {
+            return this.Subs.Where(x => x.Key.Symbol == symbol).FirstOrDefault().Value;
         }
 
         public bool TryUnify(Term u, Term v, out State result)
@@ -185,8 +211,8 @@ namespace DunKanren
         {
             return new Dictionary<Variable, Term>(newState.Subs.Where(
                 x => 
-                !oldState.Subs.ContainsKey(x.Key) || //no new key inserted
-                (oldState.Subs[x.Key].Equals(x.Key) && !newState.Subs[x.Key].Equals(x.Key)) || //declared var redefined
+                !oldState.Subs.ContainsKey(x.Key) || //new key inserted
+                (oldState.Subs[x.Key].Equals(x.Key) && !newState.Subs[x.Key].Equals(x.Key)) || //frshly-declared var redefined
                 ((!oldState.Subs[x.Key]?.Equals(newState.Subs[x.Key])) ?? false)) //defined var redefined?
                 .Where(x => x.Value is not null)); //don't bother if so
         }
@@ -224,6 +250,42 @@ namespace DunKanren
 
         public string GetName() => "State " + this.RecursionLevel + " (" + this.VariableCounter + " var/s)";
 
+
+        private string DefToString(KeyValuePair<Variable, Term> pair)
+        {
+            StringBuilder sb = new();
+
+            List<Term> constraints = new();
+            Term reified = this.Reify(pair.Key, ref constraints);
+
+            sb.Append('\t');
+            sb.Append(pair.Key.ToString().PadLeft(this.KeyWidth + 3));
+            sb.Append(" => ");
+            sb.Append(pair.Value);
+            if (!reified.Equals(pair.Value)) sb.Append($" (-> {reified.ToString()})");
+            if (constraints.Any()) sb.Append($" ¬({String.Join(", ", constraints.Select(x => x.ToString()))})");
+
+            return sb.ToString();
+        }
+
+        private string DirectDefToString(KeyValuePair<Variable, Term> pair)
+        {
+            StringBuilder sb = new();
+
+            List<Term> constraints = new();
+            this.Reify(pair.Key, ref constraints);
+
+            Term result = pair.Key.Dereference(this);
+
+            sb.Append('\t');
+            sb.Append(pair.Key.ToString().PadLeft(this.KeyWidth + 3));
+            sb.Append(" => ");
+            sb.Append(result is Variable ? "<Any>" : result.ToString());
+            if (constraints.Any()) sb.Append($" ¬({String.Join(", ", constraints.Select(x => x.ToString()))})");
+
+            return sb.ToString();
+        }
+
         public override string ToString()
         {
             StringBuilder sb = new();
@@ -231,17 +293,7 @@ namespace DunKanren
 
             foreach (var pair in this.Subs.OrderBy(x => x.Key))
             {
-                sb.Append('\t');
-                sb.Append(pair.Key.ToString());
-                sb.Append(" => ");
-                sb.Append(pair.Value?.Dereference(this).ToString() ?? "()");
-                if (this.Negs.TryGetValue(pair.Key, out HashSet<Term>? nots) && nots != null)
-                {
-                    sb.Append(" NOT (");
-                    sb.Append(String.Join(", ", nots));
-                    sb.Append(')');
-                }
-                sb.AppendLine("; ");
+                sb.AppendLine(DefToString(pair));
             }
 
             return sb.ToString();
@@ -254,17 +306,7 @@ namespace DunKanren
 
             foreach (var pair in this.Subs.Where(x => x.Key.RecursionLevel <= level).OrderBy(x => x.Key))
             {
-                sb.Append('\t');
-                sb.Append(pair.Key.ToString());
-                sb.Append(" => ");
-                sb.Append(pair.Value?.Dereference(this).ToString() ?? "Any_");
-                if (this.Negs.TryGetValue(pair.Key, out HashSet<Term>? nots) && nots != null)
-                {
-                    sb.Append(" ¬(");
-                    sb.Append(String.Join(", ", nots));
-                    sb.Append(')');
-                }
-                sb.AppendLine("; ");
+                sb.AppendLine(DirectDefToString(pair));
             }
 
             return sb.ToString();

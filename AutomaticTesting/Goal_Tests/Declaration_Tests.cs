@@ -82,5 +82,26 @@
             Assert.AreEqual(false, str2.Any());
             Assert.AreEqual(0, str2.Count());
         }
+
+        [TestMethod]
+        public void Test_CallFresh_IntoGoal()
+        {
+            Goal g1 = new CallFresh((x, y) => new Conj()
+            {
+                x == 5,
+                y == 6
+            });
+
+            Stream str1 = g1.Pursue();
+            Assert.AreEqual(true, str1.Any());
+            Assert.AreEqual(1, str1.Count());
+
+            State s1 = str1.First();
+            Assert.AreEqual(true, s1.Subs.Keys.Any(x => x.Symbol == "x"));
+            Assert.AreEqual(true, s1.Subs.Keys.Any(x => x.Symbol == "y"));
+
+            Assert.AreEqual(true, s1.LookupBySymbol("x")?.ToString() == "5");
+            Assert.AreEqual(true, s1.LookupBySymbol("y")?.ToString() == "6");
+        }
     }
 }

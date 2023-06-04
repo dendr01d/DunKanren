@@ -31,7 +31,7 @@ namespace DunKanren
             this.RecursionLevel = original.RecursionLevel;
         }
 
-        public override int Ungroundedness => 1;
+        public override uint Ungroundedness => 1;
 
         public override Term Dereference(State s)
         {
@@ -58,10 +58,6 @@ namespace DunKanren
         }
 
         public override string ToString() => this.Symbol + "#" + this.RecursionLevel;
-        public override IEnumerable<string> ToTree(string prefix, bool first, bool last)
-        {
-            yield return prefix + IO.BRANCH + this.ToString();
-        }
 
         public override int GetHashCode() => this.ID;
 

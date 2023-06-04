@@ -19,7 +19,7 @@ namespace DunKanren
         protected virtual bool IsList => false;
         protected virtual bool IsString => false;
 
-        public override int Ungroundedness => this.Car.Ungroundedness + this.Cdr.Ungroundedness;
+        public override uint Ungroundedness => this.Car.Ungroundedness + this.Cdr.Ungroundedness;
 
         public override Term Dereference(State s)
         {
@@ -158,7 +158,7 @@ namespace DunKanren
 
         public override Nil Car { get => Term.NIL; }
 
-        public override int Ungroundedness => Term.NIL.Ungroundedness;
+        public override uint Ungroundedness => Term.NIL.Ungroundedness;
         public override bool SameAs(State s, Term other) => other.SameAs(s, Term.NIL);
         public override bool TryUnifyWith(State s, Term other, out State result)
         {
@@ -263,7 +263,7 @@ namespace DunKanren
 
         public static Term Truct(string s) => GuaranteedCons(s.Select(ValueFactory.Box).ToArray());
 
-        public override int Ungroundedness => this.Car.Ungroundedness + this.Cdr.Ungroundedness;
+        public override uint Ungroundedness => this.Car.Ungroundedness + this.Cdr.Ungroundedness;
 
         public override Term Dereference(State s)
         {
