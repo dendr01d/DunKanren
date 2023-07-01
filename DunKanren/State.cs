@@ -9,30 +9,25 @@ using System.Threading.Tasks;
 
 namespace DunKanren
 {
-    public class State : IPrintable, IGrounded
+    public class State : IPrintable
     {
-        public readonly Dictionary<Variable, Term> Subs;
-        public readonly Dictionary<Variable, HashSet<Term>> Negs;
+        private readonly HashSet<ADT.Term.Variable> _variables;
 
-        public int VariableCounter;
-        public readonly int RecursionLevel;
+        public int VariableCount { get => _variables.Count; }
+        public int RecursionLevel { get; private set; }
 
-        private int KeyWidth => this.Subs.Keys.Max(x => x.Symbol.Length);
+        private int _symbolFieldWidth => this._variables.Max(x => x.Symbol.Length);
 
         private State()
         {
-            this.Subs = new Dictionary<Variable, Term>();
-            this.Negs = new Dictionary<Variable, HashSet<Term>>();
-
-            this.RecursionLevel = 0;
+            _variables = new();
+            RecursionLevel = 0;
         }
 
         private State(State s, bool recursing) : this()
         {
-            this.Subs = new Dictionary<Variable, Term>(s.Subs);
-            this.Negs = s.Negs.ToDictionary(x => x.Key, x => new HashSet<Term>(x.Value));
+            _variables = new(s._variables.Select(x => x.DeepCopy()));
 
-            this.VariableCounter = s.VariableCounter;
             this.RecursionLevel = recursing ? s.RecursionLevel + 1 : s.RecursionLevel;
         }
 
@@ -42,17 +37,26 @@ namespace DunKanren
 
         public State Dupe() => new(this, false);
 
-        public uint Ungroundedness => (uint)this.Subs.Sum(x => x.Value.Ungroundedness);
-        public int CompareTo(IGrounded? other) => this.Ungroundedness.CompareTo(other?.Ungroundedness ?? 0);
 
-        public Variable[] DeclareVars(out State result, params string[] varNames)
+        public ADT.Term.Variable DeclareVariable<T>(out State result, string symbol)
+            where T : ADT.Term
         {
-            State newState = this.Dupe();
-            List<Variable> newVars = new();
+            State output = new();
+            ADT.Term.Variable newVar = ADT.Term.Variable.GetTyped<T>(output, symbol);
+            output._variables.Add(newVar);
+
+            result = output;
+            return newVar;
+        }
+
+        public ADT.Term.Variable[] DeclareVars(out State result, params string[] varNames)
+        {
+            State newState = Dupe();
+            List<ADT.Term.Variable> newVars = new();
 
             foreach(string name in varNames)
             {
-                Variable v = new(ref newState, name);
+                ADT.Term.Variable v = new ;
                 newVars.Add(v);
             }
             result = newState;
@@ -259,7 +263,7 @@ namespace DunKanren
             Term reified = this.Reify(pair.Key, ref constraints);
 
             sb.Append('\t');
-            sb.Append(pair.Key.ToString().PadLeft(this.KeyWidth + 3));
+            sb.Append(pair.Key.ToString().PadLeft(this._symbolFieldWidth + 3));
             sb.Append(" => ");
             sb.Append(pair.Value);
             if (!reified.Equals(pair.Value)) sb.Append($" (-> {reified.ToString()})");
@@ -278,7 +282,7 @@ namespace DunKanren
             Term result = pair.Key.Dereference(this);
 
             sb.Append('\t');
-            sb.Append(pair.Key.ToString().PadLeft(this.KeyWidth + 3));
+            sb.Append(pair.Key.ToString().PadLeft(this._symbolFieldWidth + 3));
             sb.Append(" => ");
             sb.Append(result is Variable ? "<Any>" : result.ToString());
             if (constraints.Any()) sb.Append($" ¬({String.Join(", ", constraints.Select(x => x.ToString()))})");

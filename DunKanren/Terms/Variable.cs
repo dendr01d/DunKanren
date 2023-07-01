@@ -100,6 +100,11 @@ namespace DunKanren
             : s.Reject(other, this, out result);
 
         public bool TryUnifyWith(State s, IUnifiable<T> other, out State result) => s.TryExtend(this, other.Identity, out result);
+
+        public override string ToString()
+        {
+            return $"{base.ToString()}<{typeof(T)}>";
+        }
     }
 
     public interface IUnifiable<T> where T : Term

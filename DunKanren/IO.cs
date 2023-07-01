@@ -10,7 +10,7 @@ namespace DunKanren
 {
     public static class IO
     {
-        private static bool PromptUser = false;
+        private static bool PromptUser = true;
 
 
         public static void DisablePrompting()

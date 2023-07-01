@@ -439,11 +439,11 @@ namespace DunKanren
 
         static void Main()
         {
-            Goal g = MurderPuzzle();
+            //Goal g = MurderPuzzle();
 
             //Goal g = new CallFresh((x, y) => new Conj(x == 5, y == 6));
 
-            //Goal g = new CallFresh((x, y) => Appendo(x, y, "abc"));
+            Goal g = new CallFresh((x, y) => Appendo(x, y, "abc"));
 
             //Goal g = new CallFresh((x, y, z, w) => new Conj() {
             //    Appendo(x, y, z),
