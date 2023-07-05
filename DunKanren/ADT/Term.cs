@@ -11,12 +11,12 @@ namespace DunKanren.ADT
         private Term() { }
         public abstract partial class Variable : Term { }
         public abstract partial class Value : Term { }
-        private sealed partial class Nil : Term { }
+        public sealed partial class Nil : Term { }
         public abstract partial class Cons : Term { }
 
         protected static readonly Term NilValue = new Nil();
 
-        private T Match<T>(
+        protected T Match<T>(
             Func<Variable, T> fVar,
             Func<Value, T> fVal,
             Func<Cons, T> fCon,
@@ -30,6 +30,7 @@ namespace DunKanren.ADT
                 _ => fNil(this)
             };
         }
+
 
         //public bool TryUnifyWith(State s, Term other, out State result)
         //{

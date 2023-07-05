@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
+using static DunKanren.ADT.Term.Variable;
 
 namespace DunKanren.ADT
 {
@@ -10,70 +13,58 @@ namespace DunKanren.ADT
     {
         public abstract partial class Variable : Term
         {
-            public static Free GetFree(State owner, string symbol) => new Free(owner, symbol);
-            public static Typed<D> GetTyped<D>(State owner, string symbol)
-                where D : Term => new Typed<D>(GetFree(owner, symbol));
-            public static Bound<D> GetBound<D>(State owner, string symbol, D definition)
-                where D : Term => new Bound<D>(GetFree(owner, symbol), definition);
-
-            protected Variable(State s, string symbol)
+            protected Variable(string symbol)
             {
-                _owner = s;
                 Symbol = symbol;
-                _variableID = s.GenerateVariableID();
-                _restrictedDefinitions = new();
+                VariableID = State.GenerateVariableID();
             }
 
             protected Variable(Variable original)
             {
-                _owner = original._owner;
                 Symbol = original.Symbol;
-                _variableID = original._variableID;
-                _restrictedDefinitions = new(original._restrictedDefinitions);
+                VariableID = original.VariableID;
             }
-
-            protected State _owner;
-            protected int _variableID;
-            protected HashSet<Term> _restrictedDefinitions;
+            public int VariableID { get; private set; }
             public string Symbol { get; private set; }
-            public abstract Term Binding { get; }
-            public bool IsBound => Binding == this;
-            public IEnumerable<Term> Restrictions { get => _restrictedDefinitions; }
-            public abstract Variable DeepCopy();
 
-            public sealed class Bound<D> : Variable where D : Term
+            public abstract Term? DereferenceVia(State s);
+
+            public sealed class Bound<D> : Variable
+                where D : Term
             {
-                private D _definition;
-                public override Term Binding => _definition;
-                public override Variable DeepCopy() => new Bound<D>(this);
-
-                private Bound(Bound<D> original) : base(original)
+                public D Assignment { get; private set; }
+                public Bound(string symbol, D definition) : base(symbol)
                 {
-                    _definition = original._definition;
+                    Assignment = definition;
                 }
-                public Bound(Typed<D> original, D definition) : base(original)
+                public Bound(Free<D> original, D definition) : base(original)
                 {
-                    _definition = definition;
+                    Assignment = definition;
                 }
-                public Bound(Free original, D definition) : base(original)
-                {
-                    _definition = definition;
-                }
+                public Term? Dereference(State s) => s.Subs.Contains(this) ? Assignment : null;
             }
-            public sealed class Typed<D> : Variable where D : Term
+            public sealed class Free<D> : Variable
+                where D : Term
             {
-                public override Term Binding => NilValue;
-                public override Variable DeepCopy() => new Typed<D>(this);
+                private ImmutableHashSet<Predicate<ADT.Term>> _restrictions;
+                public Free(string symbol) : base(symbol)
+                {
+                    _restrictions = ImmutableHashSet.Create<Predicate<Term>>();
+                }
+                public Free(Free<D> original, Predicate<ADT.Term> pred) : this(original.Symbol)
+                {
+                    _restrictions = _restrictions.Add(pred);
+                }
 
-                private Typed(Typed<D> original) : base(original) { }
-                public Typed(Free original) : base(original) { }
-            }
-            public sealed class Free : Variable
-            {
-                public override Term Binding { get => this; }
-                public override Variable DeepCopy() => new Free(_owner, Symbol);
-
-                public Free(State owner, string symbol) : base(owner, symbol) { }
+                public Bound<D>? TryBind(D value)
+                {
+                    if (_restrictions.All(x => x(value)))
+                    {
+                        return new Bound<D>(Symbol, value);
+                    }
+                    return null;
+                }
+                public Term? Dereference(State s) => s.Subs.Contains(this) ? this : null;
             }
         }
     }

@@ -6,27 +6,29 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Collections.Immutable;
 
 namespace DunKanren
 {
     public class State : IPrintable
     {
-        private readonly HashSet<ADT.Term.Variable> _variables;
+        private static int _globalVariableCount = 0;
 
-        public int VariableCount { get => _variables.Count; }
+        public ImmutableDictionary<ADT.Term.Variable, VariableDefinition.> Subs;
+        public int VariableCount { get => Subs.Count; }
         public int RecursionLevel { get; private set; }
 
-        private int _symbolFieldWidth => this._variables.Max(x => x.Symbol.Length);
+        private int _symbolFieldWidth => this.Subs.Max(x => x.Symbol.Length);
 
         private State()
         {
-            _variables = new();
+            Subs = ImmutableHashSet.Create<ADT.Term.Variable>();
             RecursionLevel = 0;
         }
 
         private State(State s, bool recursing) : this()
         {
-            _variables = new(s._variables.Select(x => x.DeepCopy()));
+            Subs = s.Subs.ToImmutableHashSet();
 
             this.RecursionLevel = recursing ? s.RecursionLevel + 1 : s.RecursionLevel;
         }
@@ -37,42 +39,57 @@ namespace DunKanren
 
         public State Dupe() => new(this, false);
 
-
-        public ADT.Term.Variable DeclareVariable<T>(out State result, string symbol)
+        public ADT.Term.Variable.Free<T> DeclareVariable<T>(string symbol, out State output)
             where T : ADT.Term
         {
-            State output = new();
-            ADT.Term.Variable newVar = ADT.Term.Variable.GetTyped<T>(output, symbol);
-            output._variables.Add(newVar);
-
-            result = output;
+            output = Dupe();
+            ADT.Term.Variable.Free<T> newVar = new ADT.Term.Variable.Free<T>(symbol);
+            output.Subs = output.Subs.Add(newVar);
             return newVar;
         }
 
-        public ADT.Term.Variable[] DeclareVars(out State result, params string[] varNames)
+        public ADT.Term.Variable.Bound<T> DefineVariable<T>(string symbol, T value, out State output)
+            where T : ADT.Term
         {
-            State newState = Dupe();
-            List<ADT.Term.Variable> newVars = new();
+            output = Dupe();
+            ADT.Term.Variable.Bound<T> newVar = new ADT.Term.Variable.Bound<T>(symbol, value);
+            output.Subs = output.Subs.Add(newVar);
+            return newVar;
+        }
 
-            foreach(string name in varNames)
+        private State? TryBindVariable<T>(ADT.Term.Variable.Free<T> var, T value)
+            where T : ADT.Term
+        {
+            State? output = null;
+
+            if (Subs.Contains(var)
+                && var.TryBind(value) is ADT.Term.Variable.Bound<T> bound
+                && bound != null)
             {
-                ADT.Term.Variable v = new ;
-                newVars.Add(v);
+                output = Dupe();
+                output.Subs = output.Subs.Remove(var).Add(bound);
             }
-            result = newState;
-            return newVars.ToArray();
+
+            return output;
         }
 
-        public int GenerateVariableID() => ++this.VariableCounter;
+        public static int GenerateVariableID() => _globalVariableCount++;
 
-        public Term Walk(Term t)
+        public ADT.Term? Walk(ADT.Term.Variable v)
         {
-            return t.Dereference(this);
+            if (v.DereferenceVia(this) is ADT.Term def
+                && def != null)
+            {
+                return def is ADT.Term.Variable nestedVar ? Walk(nestedVar) : def;
+            }
+
+            return def;
         }
 
-        public Term Reify(Term original, ref List<Term> constraints)
+        public ADT.Term Reify(ADT.Term.Variable original, ref Predicate<ADT.Term> constraints)
         {
-            if (original is Variable v)
+            if (Subs.get(original, out VariableDefinition? vd)
+                && vd is VariableDefinition.Negative vdn)
             {
                 if (this.Negs.TryGetValue(v, out var negs))
                 {
@@ -88,9 +105,10 @@ namespace DunKanren
             return original;
         }
 
-        public Term? LookupBySymbol(string symbol)
+        public ADT.Term? LookupBySymbol(string symbol)
         {
-            return this.Subs.Where(x => x.Key.Symbol == symbol).FirstOrDefault().Value;
+            var vdp = Subs.Where(x => x.Key.Symbol == symbol).FirstOrDefault().Value as VariableDefinition.Positive;
+            return vdp?.Definition;
         }
 
         public bool TryUnify(Term u, Term v, out State result)

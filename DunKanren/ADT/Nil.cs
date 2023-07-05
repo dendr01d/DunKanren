@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DunKanren.ADT
 {
-    internal class Nil
+    public sealed partial class Nil
     {
     }
 }
