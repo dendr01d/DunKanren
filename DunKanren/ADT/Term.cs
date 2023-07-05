@@ -6,15 +6,13 @@ using System.Threading.Tasks;
 
 namespace DunKanren.ADT
 {
-    public abstract partial class Term
+    public abstract partial class Term : IEquatable<Term>
     {
         private Term() { }
-        public abstract partial class Variable : Term { }
-        public abstract partial class Value : Term { }
+        public partial class Variable : Term, IEquatable<Variable> { }
+        public abstract partial class Value : Term, IEquatable<Value> { }
+        public abstract partial class Cons : Term, IEquatable<Cons> { }
         private sealed partial class Nil : Term { }
-        public abstract partial class Cons : Term { }
-
-        protected static readonly Term NilValue = new Nil();
 
         private T Match<T>(
             Func<Variable, T> fVar,
@@ -40,5 +38,27 @@ namespace DunKanren.ADT
         //        (_, Variable) => s.TryUnify(other, this, out result),
         //    };
         //}
+
+        public bool Equals(Term? other, State context)
+        {
+            return (this, other) switch
+            {
+                (Variable v1, Variable v2) => v1 == v2,
+                (Variable v, Term o) => v.Reify(context).Equals(o, context),
+                (Term o, Variable v) => v.Reify(context).Equals(o, context),
+                (Value v1, Value v2) => v1 == v2,
+                (Cons c1, Cons c2) => c1.Car == c2.Car && c1.Cdr == c2.Cdr,
+            }
+        }
+
+        public Term Reify(State s)
+        {
+            return this switch
+            {
+                Variable v => s.Walk(v) ?? this,
+                Value.TypedValue<ADT.Term> t => t.
+                _ => this
+            };
+        }
     }
 }
