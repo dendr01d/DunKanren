@@ -8,27 +8,29 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Immutable;
 
+using System.Collections.Immutable;
+
 namespace DunKanren
 {
     public class State : IPrintable
     {
-        private static int _globalVariableCount = 0;
+        private int _variableCounter = 0;
 
-        public ImmutableDictionary<ADT.Term.Variable, VariableDefinition.> Subs;
-        public int VariableCount { get => Subs.Count; }
+        private ImmutableDictionary<ADT.Term.Variable, Binding> _subs;
+        public int VariableCount { get => _subs.Count; }
         public int RecursionLevel { get; private set; }
 
-        private int _symbolFieldWidth => this.Subs.Max(x => x.Symbol.Length);
+        private int _symbolFieldWidth => this._subs.Keys.Max(x => x.Symbol.Length);
 
         private State()
         {
-            Subs = ImmutableHashSet.Create<ADT.Term.Variable>();
+            _subs = ImmutableDictionary.Create<ADT.Term.Variable, Binding>();
             RecursionLevel = 0;
         }
 
         private State(State s, bool recursing) : this()
         {
-            Subs = s.Subs.ToImmutableHashSet();
+            _subs = s._subs.ToImmutableDictionary(x => x.Key, x => x.Value.ToNew());
 
             this.RecursionLevel = recursing ? s.RecursionLevel + 1 : s.RecursionLevel;
         }
@@ -39,51 +41,28 @@ namespace DunKanren
 
         public State Dupe() => new(this, false);
 
-        public ADT.Term.Variable.Free<T> DeclareVariable<T>(string symbol, out State output)
-            where T : ADT.Term
+        public ADT.Term.Variable[] DeclareVars(out State result, params string[] varNames)
         {
-            output = Dupe();
-            ADT.Term.Variable.Free<T> newVar = new ADT.Term.Variable.Free<T>(symbol);
-            output.Subs = output.Subs.Add(newVar);
-            return newVar;
+            State newState = Dupe();
+            ADT.Term.Variable[] newVars = varNames.Select(x => new ADT.Term.Variable(newState, x)).ToArray();
+            newState._subs = newState._subs.AddRange(newVars.Select(x => new KeyValuePair<ADT.Term.Variable, Binding>(x, new Binding.Free.Untyped())));
+
+            result = newState;
+            return newVars;
         }
 
-        public ADT.Term.Variable.Bound<T> DefineVariable<T>(string symbol, T value, out State output)
-            where T : ADT.Term
-        {
-            output = Dupe();
-            ADT.Term.Variable.Bound<T> newVar = new ADT.Term.Variable.Bound<T>(symbol, value);
-            output.Subs = output.Subs.Add(newVar);
-            return newVar;
-        }
-
-        private State? TryBindVariable<T>(ADT.Term.Variable.Free<T> var, T value)
-            where T : ADT.Term
-        {
-            State? output = null;
-
-            if (Subs.Contains(var)
-                && var.TryBind(value) is ADT.Term.Variable.Bound<T> bound
-                && bound != null)
-            {
-                output = Dupe();
-                output.Subs = output.Subs.Remove(var).Add(bound);
-            }
-
-            return output;
-        }
-
-        public static int GenerateVariableID() => _globalVariableCount++;
+        public int GenerateVariableID() => ++this._variableCounter;
 
         public ADT.Term? Walk(ADT.Term.Variable v)
         {
-            if (v.DereferenceVia(this) is ADT.Term def
-                && def != null)
+            if (_subs.GetValueOrDefault(v) is Binding.Bound def
+                && def.GetValue() is ADT.Term t)
             {
-                return def is ADT.Term.Variable nestedVar ? Walk(nestedVar) : def;
+                return t is ADT.Term.Variable v2
+                    ? Walk(v2)
+                    : t;
             }
-
-            return def;
+            return null;
         }
 
         public ADT.Term Reify(ADT.Term.Variable original, ref Predicate<ADT.Term> constraints)
@@ -107,17 +86,21 @@ namespace DunKanren
 
         public ADT.Term? LookupBySymbol(string symbol)
         {
-            var vdp = Subs.Where(x => x.Key.Symbol == symbol).FirstOrDefault().Value as VariableDefinition.Positive;
-            return vdp?.Definition;
+            return _subs.Keys.FirstOrDefault(x => x.Symbol == symbol) is ADT.Term.Variable v ? LookupByVariable(v) : null;
         }
 
-        public bool TryUnify(Term u, Term v, out State result)
+        public ADT.Term? LookupByVariable(ADT.Term.Variable vari)
         {
-            IO.Debug_Print(u.ToString() + " EQ? " + v.ToString());
-            Term alpha = this.Walk(u);
-            Term beta = this.Walk(v);
+            return _subs.GetValueOrDefault(vari) is Binding.Bound bound ? bound.GetValue() : null;
+        }
 
-            if (!alpha.SameAs(this, u) || !beta.SameAs(this, v)) IO.Debug_Print("===> " + alpha.ToString() + " EQ? " + beta.ToString());
+        public bool TryUnify(ADT.Term t1, ADT.Term t2, out State result)
+        {
+            IO.Debug_Print(t1.ToString() + " EQ? " + t2.ToString());
+            ADT.Term alpha = t1 is ADT.Term.Variable v1 ? this.Walk(v1) ?? t1 : t1;
+            ADT.Term beta = t2 is ADT.Term.Variable v2 ? this.Walk(v2) ?? t2 : t2;
+
+            if (!alpha.Equals(this, t1) || !beta.Equals(this, t2)) IO.Debug_Print("===> " + alpha.ToString() + " EQ? " + beta.ToString());
 
             return alpha.TryUnifyWith(this, beta, out result);
         }
@@ -197,11 +180,11 @@ namespace DunKanren
         }
 
 
-        public bool TryDisUnify(Term u, Term v, out State result)
+        public bool TryDisUnify(ADT.Term.Variable v, ADT.Term t, out State result)
         {
             //See section 8 of Byrd's paper
 
-            IO.Debug_Print(u.ToString() + " NQ? " + v.ToString());
+            IO.Debug_Print(v.ToString() + " NQ? " + t.ToString());
 
             if (!this.TryUnify(u, v, out State unifiedResult))
             {

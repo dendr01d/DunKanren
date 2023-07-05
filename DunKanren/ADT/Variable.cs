@@ -11,7 +11,7 @@ namespace DunKanren.ADT
 {
     public abstract partial class Term
     {
-        public abstract partial class Variable : Term
+        public sealed partial class Variable : Term
         {
             protected Variable(string symbol)
             {
@@ -25,46 +25,21 @@ namespace DunKanren.ADT
                 VariableID = original.VariableID;
             }
             public int VariableID { get; private set; }
+            private State _owner;
+            private int _variableID;
             public string Symbol { get; private set; }
 
-            public abstract Term? DereferenceVia(State s);
-
-            public sealed class Bound<D> : Variable
-                where D : Term
+            public bool Equals(Variable? other)
             {
-                public D Assignment { get; private set; }
-                public Bound(string symbol, D definition) : base(symbol)
-                {
-                    Assignment = definition;
-                }
-                public Bound(Free<D> original, D definition) : base(original)
-                {
-                    Assignment = definition;
-                }
-                public Term? Dereference(State s) => s.Subs.Contains(this) ? Assignment : null;
+                return other is Variable v
+                    && Equals(v._variableID, _variableID);
             }
-            public sealed class Free<D> : Variable
-                where D : Term
-            {
-                private ImmutableHashSet<Predicate<ADT.Term>> _restrictions;
-                public Free(string symbol) : base(symbol)
-                {
-                    _restrictions = ImmutableHashSet.Create<Predicate<Term>>();
-                }
-                public Free(Free<D> original, Predicate<ADT.Term> pred) : this(original.Symbol)
-                {
-                    _restrictions = _restrictions.Add(pred);
-                }
 
-                public Bound<D>? TryBind(D value)
-                {
-                    if (_restrictions.All(x => x(value)))
-                    {
-                        return new Bound<D>(Symbol, value);
-                    }
-                    return null;
-                }
-                public Term? Dereference(State s) => s.Subs.Contains(this) ? this : null;
+            public Variable(State s, string symbol)
+            {
+                _owner = s;
+                Symbol = symbol;
+                _variableID = s.GenerateVariableID();
             }
         }
     }
