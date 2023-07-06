@@ -13,7 +13,6 @@ namespace DunKanren.ADT
             public abstract bool Equals(Value? other);
 
             public abstract partial class TypedValue<T> : Term
-                where T : IContextuallyEquatable<T>
             {
                 public T Data { get; private set; }
 

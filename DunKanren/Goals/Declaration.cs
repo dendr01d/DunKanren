@@ -58,9 +58,9 @@ namespace DunKanren.Goals
         private string DynamicDescription;
         private IEnumerable<IPrintable> DynamicChild = Array.Empty<IPrintable>();
 
-        private Func<Variable[], Goal> Constructor;
+        private Func<ADT.Term.Variable[], Goal> Constructor;
 
-        private CallFresh(System.Reflection.MethodInfo body, Func<Variable[], Goal> constructor) : base(body.GetParameters())
+        private CallFresh(System.Reflection.MethodInfo body, Func<ADT.Term.Variable[], Goal> constructor) : base(body.GetParameters())
         {
             //string varNames = String.Join(", ", body.GetParameters().Select(x => x.Name));
             this.DynamicExpression = $"ƒ(?)";
@@ -73,7 +73,7 @@ namespace DunKanren.Goals
         {
             return new(() => (State s) =>
             {
-                Variable[] newVars = s.Next().DeclareVars(out State newState, this.VariableNames);
+                ADT.Term.Variable[] newVars = s.Next().DeclareVars(out State newState, this.VariableNames);
                 Goal newGoal = Constructor(newVars);
 
                 this.DynamicExpression = $"ƒ({String.Join(", ", this.VariableNames)})";
@@ -90,35 +90,35 @@ namespace DunKanren.Goals
             this(lambda.Method, (v) => lambda())
         { }
 
-        public CallFresh(Func<Variable, Goal> lambda) :
+        public CallFresh(Func<ADT.Term.Variable, Goal> lambda) :
             this(lambda.Method, (v) => lambda(v[0]))
         { }
 
-        public CallFresh(Func<Variable, Variable, Goal> lambda) :
+        public CallFresh(Func<ADT.Term.Variable, ADT.Term.Variable, Goal> lambda) :
             this(lambda.Method, (v) => lambda(v[0], v[1]))
         { }
 
-        public CallFresh(Func<Variable, Variable, Variable, Goal> lambda) :
+        public CallFresh(Func<ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, Goal> lambda) :
             this(lambda.Method, (v) => lambda(v[0], v[1], v[2]))
         { }
 
-        public CallFresh(Func<Variable, Variable, Variable, Variable, Goal> lambda) :
+        public CallFresh(Func<ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, Goal> lambda) :
             this(lambda.Method, (v) => lambda(v[0], v[1], v[2], v[3]))
         { }
 
-        public CallFresh(Func<Variable, Variable, Variable, Variable, Variable, Goal> lambda) :
+        public CallFresh(Func<ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, Goal> lambda) :
             this(lambda.Method, (v) => lambda(v[0], v[1], v[2], v[3], v[4]))
         { }
 
-        public CallFresh(Func<Variable, Variable, Variable, Variable, Variable, Variable, Goal> lambda) :
+        public CallFresh(Func<ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, Goal> lambda) :
             this(lambda.Method, (v) => lambda(v[0], v[1], v[2], v[3], v[4], v[5]))
         { }
 
-        public CallFresh(Func<Variable, Variable, Variable, Variable, Variable, Variable, Variable, Goal> lambda) :
+        public CallFresh(Func<ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, Goal> lambda) :
             this(lambda.Method, (v) => lambda(v[0], v[1], v[2], v[3], v[4], v[5], v[6]))
         { }
 
-        public CallFresh(Func<Variable, Variable, Variable, Variable, Variable, Variable, Variable, Variable, Goal> lambda) :
+        public CallFresh(Func<ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, ADT.Term.Variable, Goal> lambda) :
             this(lambda.Method, (v) => lambda(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]))
         { }
 

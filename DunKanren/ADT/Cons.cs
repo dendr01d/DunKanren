@@ -34,17 +34,17 @@ namespace DunKanren.ADT
             public abstract class List<T> : Cons
                 where T : Term
             {
-                public sealed class ListNode<LT, L> : List<LT>
-                    where LT : Term
-                    where L : List<LT>
+                public sealed class ListNode<LItem, LTail> : List<LItem>
+                    where LItem : Term
+                    where LTail : List<LItem>
                 {
-                    private LT _car;
-                    private L _cdr;
+                    private LItem _car;
+                    private LTail _cdr;
 
                     public override Term Car => _car;
                     public override Term Cdr => _cdr;
 
-                    public ListNode(LT car, L cdr)
+                    public ListNode(LItem car, LTail cdr)
                     {
                         _car = car;
                         _cdr = cdr;
@@ -68,12 +68,12 @@ namespace DunKanren.ADT
                     public ListTail(LT car)
                     {
                         _car = car;
-                        _cdr = new Term.Nil();
+                        _cdr = Nil.Value;
                     }
 
                     public override string ToString()
                     {
-                        return $"{_car}, {_cdr}";
+                        return $"{_car}";
                     }
                 }
             }

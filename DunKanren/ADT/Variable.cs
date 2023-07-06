@@ -13,33 +13,33 @@ namespace DunKanren.ADT
     {
         public sealed partial class Variable : Term
         {
-            protected Variable(string symbol)
+            public string Symbol { get; private set; }
+            private int _variableID;
+            private State _owner;
+            public int RecursionLevel => _owner.RecursionLevel;
+
+            public Variable(string symbol, State owner)
             {
                 Symbol = symbol;
-                VariableID = State.GenerateVariableID();
+                _owner = owner;
+                _variableID = owner.GenerateVariableID();
             }
 
-            protected Variable(Variable original)
+            public Term Reify(State context)
             {
-                Symbol = original.Symbol;
-                VariableID = original.VariableID;
+                if (context.Walk(this) is Term t
+                    && t is Variable v)
+                {
+                    return v.Reify(context);
+                }
+
+                return this;
             }
-            public int VariableID { get; private set; }
-            private State _owner;
-            private int _variableID;
-            public string Symbol { get; private set; }
 
             public bool Equals(Variable? other)
             {
-                return other is Variable v
-                    && Equals(v._variableID, _variableID);
-            }
-
-            public Variable(State s, string symbol)
-            {
-                _owner = s;
-                Symbol = symbol;
-                _variableID = s.GenerateVariableID();
+                return other is Variable
+                    && _variableID == other._variableID;
             }
         }
     }

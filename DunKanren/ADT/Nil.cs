@@ -6,7 +6,16 @@ using System.Threading.Tasks;
 
 namespace DunKanren.ADT
 {
-    public sealed partial class Nil
+    public abstract partial class Term
     {
+        public sealed partial class Nil
+        {
+            public static Nil Value = new();
+
+            public override string ToString()
+            {
+                return "ⁿ";
+            }
+        }
     }
 }

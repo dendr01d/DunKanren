@@ -6,21 +6,13 @@ using System.Threading.Tasks;
 
 namespace DunKanren
 {
-    public interface IContextuallyEquatable
+    public interface IContextuallyEquatable<T>
+        where T : ADT.Term
     {
-        bool Equals(IContextuallyEquatable other, State context);
-        bool Equals(IContextuallyEquatable t1, IContextuallyEquatable t2, State context)
+        bool Equals(T other, State context);
+        bool Equals(T t1, T t2, State context)
         {
-            return t1.Equals(t2, context);
-        }
-    }
-
-    public interface IEquatableSansContext : IContextuallyEquatable, IEquatable<IEquatableSansContext>
-    {
-        new bool Equals(IContextuallyEquatable other, State context) => Equals(other);
-        new bool Equals(IContextuallyEquatable t1, IContextuallyEquatable t2, State context)
-        {
-            return t1.Equals(t2);
+            return t1.ContextuallyEquals(t2, context);
         }
     }
 }

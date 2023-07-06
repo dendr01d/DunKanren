@@ -18,6 +18,12 @@ namespace DunKanren
         {
             public abstract ADT.Term GetValue();
 
+            public static Value<T> Wrap<T>(T value)
+                where T : ADT.Term
+            {
+                return new Value<T>(value);
+            }
+
             public sealed class Value<T> : Bound
                 where T : ADT.Term
             {
