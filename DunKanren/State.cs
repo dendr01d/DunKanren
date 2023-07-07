@@ -18,18 +18,18 @@ namespace DunKanren
         public int VariableCounter;
         public readonly int RecursionLevel;
 
-        private int KeyWidth => this.Subs.Keys.Max(x => x.Symbol.Length);
+        private int KeyWidth => Subs.Any() ? Subs.Keys.Max(x => x.Symbol.Length) : 0;
 
         private State()
         {
-            this.Subs = ImmutableDictionary.Create<Variable, Instance>();
+            this.Subs = ImmutableDictionary<Variable, Instance>.Empty;
 
             this.RecursionLevel = 0;
         }
 
         private State(State s, bool recursing) : this()
         {
-            this.Subs = s.Subs.ToDictionary(x => x.Key, x => x.Value).ToImmutableDictionary();
+            this.Subs = this.Subs.AddRange(s.Subs.ToDictionary(x => x.Key, x => x.Value));
 
             this.VariableCounter = s.VariableCounter;
             this.RecursionLevel = recursing ? s.RecursionLevel + 1 : s.RecursionLevel;
@@ -44,17 +44,39 @@ namespace DunKanren
         public uint Ungroundedness => (uint)this.Subs.Sum(x => x.Value.Ungroundedness);
         public int CompareTo(IGrounded? other) => this.Ungroundedness.CompareTo(other?.Ungroundedness ?? 0);
 
+        public (State, Variable) DeclareVar(string varName)
+        {
+            State newState = Dupe();
+            Variable v = new(ref newState, varName);
+            newState.Subs = newState.Subs.Add(v, new Instance.Indefinite());
+
+            return (newState, v);
+        }
+
+        public (State, Variable) DeclareVar<T>(string varName)
+            where T : Term
+        {
+            (State s, Variable v) = DeclareVar(varName);
+            if (s.Subs.TryGetValue(v, out Instance? inst)
+                && inst is Instance.Indefinite indef)
+            {
+                s.Subs = s.Subs.SetItem(v, indef.AddRestriction(x => x is T));
+            }
+
+            return (s, v);
+        }
+
         public Variable[] DeclareVars(out State result, params string[] varNames)
         {
-            State newState = this.Dupe();
+            result = Dupe();
             List<Variable> newVars = new();
 
-            foreach(string name in varNames)
+            foreach(string varName in varNames)
             {
-                Variable v = new(ref newState, name);
-                newVars.Add(v);
+                (result, Variable newVar) = result.DeclareVar(varName);
+                newVars.Add(newVar);
             }
-            result = newState;
+
             return newVars.ToArray();
         }
 
@@ -62,7 +84,25 @@ namespace DunKanren
 
         public Term Walk(Term t)
         {
-            return t.Dereference(this);
+            if (t is Variable v
+                && Subs.TryGetValue(v, out Instance? inst)
+                && inst is Instance.Definite def)
+            {
+                if (def.Definition is Variable v2)
+                {
+                    return Walk(v2);
+                }
+                else
+                {
+                    return def.Definition;
+                }
+            }
+            else if (t is Cons<Term, Term> c)
+            {
+                return Cons.Truct(Walk(c.Car), Walk(c.Cdr));
+            }
+
+            return t;
         }
 
         public Term? LookupBySymbol(string symbol)
@@ -78,10 +118,22 @@ namespace DunKanren
 
             if (!alpha.TermEquals(this, u) || !beta.TermEquals(this, v)) IO.Debug_Print("===> " + alpha.ToString() + " EQ? " + beta.ToString());
 
-            return alpha.TryUnifyWith(this, beta, out result);
+            if (u is Variable uV)
+            {
+                return TryExtend(uV, v, out result);
+            }
+            else if (v is Variable vV)
+            {
+                return TryExtend(vV, u, out result);
+            }
+            else
+            {
+                result = this;
+                return u.Equals(v);
+            }
         }
 
-        public bool TryExtend(Variable v, Term t, out State result)
+        private bool TryExtend(Variable v, Term t, out State result)
         {
             if (Subs.TryGetValue(v, out Instance? inst))
             {
@@ -92,7 +144,16 @@ namespace DunKanren
                     //if the variable is already defined,
                     //fail, unless the definitions happen to be equal
                     result = this;
-                    return def.Definition.Equals(t);
+                    if(def.Definition.TermEquals(this, t))
+                    {
+                        IO.Debug_Print(v.ToString() + " EQL " + t.ToString() + " in " + result.ToString());
+                        return true;
+                    }
+                    else
+                    {
+                        IO.Debug_Print(v.ToString() + " NEQ " + t.ToString() + " in " + result.ToString());
+                        return false;
+                    }
                 }
                 else if (inst is Instance.Indefinite indef)
                 {
@@ -102,11 +163,13 @@ namespace DunKanren
                     {
                         result = new(this, false);
                         result.Subs = result.Subs.Remove(v).Add(v, indef.BindTo(t));
+                        IO.Debug_Print(v.ToString() + " DEF " + t.ToString() + " in " + result.ToString());
                         return true;
                     }
                     else
                     {
                         result = this;
+                        IO.Debug_Print(v.ToString() + " NEV " + t.ToString() + " in " + result.ToString());
                         return false;
                     }
                 }
@@ -120,21 +183,6 @@ namespace DunKanren
             //result = this;
             //return false;
         }
-
-        public bool Affirm(Term u, Term v, out State result)
-        {
-            result = this;
-            IO.Debug_Print(u.ToString() + " EQL " + v.ToString() + " in " + result.ToString());
-            return true;
-        }
-
-        public bool Reject(Term u, Term v, out State result)
-        {
-            result = this;
-            IO.Debug_Print(u.ToString() + " NEQ " + v.ToString() + " in " + result.ToString());
-            return false;
-        }
-
 
         public bool TryDisUnify(Term u, Term v, out State result)
         {
@@ -218,7 +266,7 @@ namespace DunKanren
         {
             StringBuilder sb = new();
 
-            Term result = pair.Key.Dereference(this);
+            Term result = this.Walk(pair.Key);
 
             sb.Append('\t');
             sb.Append(pair.Key.ToString().PadLeft(this.KeyWidth + 3));

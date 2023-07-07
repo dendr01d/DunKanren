@@ -39,7 +39,7 @@ namespace DunKanren.Goals
             return new(() => (State s) =>
             {
                 s.Next().DeclareVars(out State newState, this.VariableNames);
-                return Stream.Singleton(newState.Next());
+                return Stream.Singleton(newState);
             });
         }
 
@@ -48,6 +48,9 @@ namespace DunKanren.Goals
         public override uint Ungroundedness => (uint)this.VariableNames.Length;
     }
 
+    /// <summary>
+    /// A goal that takes a goal constructor, uses it to declare fresh variables, and then pursues the new goal.
+    /// </summary>
     public sealed class CallFresh : Declaration
     {
         public override string Expression => this.DynamicExpression;

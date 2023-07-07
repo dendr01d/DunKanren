@@ -24,16 +24,9 @@ namespace DunKanren
                 Definition = definition;
             }
 
-            public override Term Dereference(State s) => Definition.Dereference(s);
-
             public override bool TermEquals(State s, Term other) => Definition.TermEquals(s, other);
 
             public override string ToString() => Definition.ToString();
-
-            public override bool TryUnifyWith(State s, Term other, out State result)
-            {
-                return Definition.TryUnifyWith(s, other, out result);
-            }
 
             public override bool CongruentWith(Term t) => Definition.Equals(t);
             public override Instance BindTo(Term t) => throw new InvalidOperationException("Can't bind term to definite term instance");
@@ -51,8 +44,6 @@ namespace DunKanren
             public override bool TermEquals(State s, Term other) => ReferenceEquals(this, other);
 
             public override string ToString() => $"Indefinite ({_restrictions.Count}r)";
-
-            public override bool TryUnifyWith(State s, Term other, out State result) => s.Reject(this, other, out result);
 
             public override bool CongruentWith(Term t) => _restrictions.All(x => x(t));
             public override Instance BindTo(Term t) => new Definite(t);

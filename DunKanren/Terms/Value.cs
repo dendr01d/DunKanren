@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace DunKanren
 {
-    public class Value<D> : Term, IUnifiable<Value<D>>
+    public class Value<D> : Term
     {
         private readonly D Data;
 
@@ -20,19 +20,7 @@ namespace DunKanren
         public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
         public override bool TermEquals<O>(State s, Value<O> other) => other.Data!.Equals(this.Data);
 
-        public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);
-        public override bool TryUnifyWith<O>(State s, Value<O> other, out State result) =>
-            this.TermEquals(s, other)
-            ? s.Affirm(other, this, out result)
-            : s.Reject(other, this, out result);
-
         public override string ToString() => this.Data?.ToString() ?? "<UNK?>";
-
-        public bool TryUnifyWith(State s, Value<D> other, out State result) => this.TryUnifyWith<D>(s, other, out result);
-
-        public bool TryUnifyWith(State s, Variable<Value<D>> other, out State result) => s.TryExtend(other, this, out result);
-
-        public bool TryUnifyWith(State s, IUnifiable<Value<D>> other, out State result) => other.TryUnifyWith(s, this, out result);
     }
 
     public static class ValueFactory

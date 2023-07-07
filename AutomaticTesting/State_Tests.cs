@@ -23,12 +23,13 @@ namespace AutomaticTesting
         public void Test_Dupe()
         {
             State s = State.InitialState();
-            Variable v = new Variable(ref s, "test");
             State s2 = s.Dupe();
+            s.DeclareVar("test");
 
             Assert.AreNotSame(s, s2);
 
             Assert.AreEqual(s.RecursionLevel, s2.RecursionLevel);
+            Assert.AreEqual(0, s.VariableCounter);
             Assert.AreEqual(s.VariableCounter, s2.VariableCounter);
 
             Assert.AreNotSame(s.Subs, s2.Subs);
@@ -71,7 +72,8 @@ namespace AutomaticTesting
 
             for(int i = 0; i < newVars.Length - 1; ++i)
             {
-                s.TryExtend(newVars[i], newVars[i + 1], out s);
+                bool succ = s.TryUnify(newVars[i], newVars[i + 1], out s);
+                Assert.AreEqual(true, succ);
             }
 
             Assert.AreEqual(newVars[3], s.Walk(newVars[0]));
@@ -94,10 +96,11 @@ namespace AutomaticTesting
             Variable[] altVars = State.InitialState().DeclareVars(out State _, "test1", "test2", "test3");
 
             Console.WriteLine($"Extending {altVars[0]} with {altVars[1]}:");
-            bool succ1 = s.TryExtend(altVars[0], altVars[1], out s);
+            bool succ1 = s.TryUnify(altVars[0], altVars[1], out s);
             Console.WriteLine(s);
+
             Console.WriteLine($"Extending {altVars[1]} with {altVars[2]}:");
-            bool succ2 = s.TryExtend(altVars[1], altVars[2], out s);
+            bool succ2 = s.TryUnify(altVars[1], altVars[2], out s);
             Console.WriteLine(s);
 
             Assert.AreEqual(true, succ1);
@@ -109,14 +112,14 @@ namespace AutomaticTesting
 
 
             Console.WriteLine($"Extending {altVars[0]} with {altVars[2]}:");
-            bool succ3 = s.TryExtend(altVars[0], altVars[2], out s);
+            bool succ3 = s.TryUnify(altVars[0], altVars[2], out s);
             Console.WriteLine(s);
             Assert.AreEqual(false, succ3);
             Assert.AreNotEqual(altVars[2], s.Subs[altVars[0]]);
 
 
             Console.WriteLine($"Extending {altVars[0]} with {altVars[1]} in new state:");
-            bool succ4 = s.TryExtend(altVars[0], altVars[1], out State s2);
+            bool succ4 = s.TryUnify(altVars[0], altVars[1], out State s2);
             Console.WriteLine(s2);
             Assert.AreEqual(true, succ4);
             CollectionAssert.AreEquivalent(s.Subs, s2.Subs);
@@ -132,13 +135,13 @@ namespace AutomaticTesting
             Console.WriteLine(s2);
 
             Console.WriteLine($"Extending {altVars[2]} with {altVars[0]} in new state:");
-            bool succ5 = s2.TryExtend(altVars[2], altVars[0], out State s3);
+            bool succ5 = s2.TryUnify(altVars[2], altVars[0], out State s3);
             Console.WriteLine(s3);
             Assert.AreEqual(false, succ5);
             CollectionAssert.AreEquivalent(s2.Subs, s3.Subs);
 
             Console.WriteLine($"Extending {altVars[2]} with {altVars[1]} in new state:");
-            bool succ6 = s2.TryExtend(altVars[2], altVars[1], out State s4);
+            bool succ6 = s2.TryUnify(altVars[2], altVars[1], out State s4);
             Assert.AreEqual(false, succ6);
             CollectionAssert.AreEquivalent(s2.Subs, s4.Subs);
         }
@@ -148,29 +151,29 @@ namespace AutomaticTesting
         {
             State s = State.InitialState();
 
-            Variable x = new(ref s, "x");
-            Variable y = new(ref s, "y");
+            (s, Variable x) = s.DeclareVar("x");
+            (s, Variable y) = s.DeclareVar("y");
 
             Value<int> five = new Value<int>(5);
             Value<int> six = new Value<int>(6);
 
             bool succ1 = s.TryUnify(x, five, out s);
             Assert.AreEqual(true, succ1);
-            Assert.AreEqual(five, s.Subs[x]);
+            Assert.AreEqual(true, s.Subs[x] is Instance.Definite def1 && def1.Definition.Equals(five));
 
             bool succ2 = s.TryUnify(y, six, out s);
             Assert.AreEqual(true, succ2);
-            Assert.AreEqual(six, s.Subs[y]);
+            Assert.AreEqual(true, s.Subs[y] is Instance.Definite def2 && def2.Definition.Equals(six));
 
             bool succ3 = s.TryUnify(x, y, out s);
             Assert.AreEqual(false, succ3);
-            Assert.AreEqual(five, s.Subs[x]);
-            Assert.AreEqual(six, s.Subs[y]);
+            Assert.AreEqual(true, s.Subs[x] is Instance.Definite def3_1 && def3_1.Definition.Equals(five));
+            Assert.AreEqual(true, s.Subs[y] is Instance.Definite def3_2 && def3_2.Definition.Equals(six));
 
             bool succ4 = s.TryUnify(five, six, out s);
             Assert.AreEqual(false, succ4);
-            Assert.AreEqual(five, s.Subs[x]);
-            Assert.AreEqual(six, s.Subs[y]);
+            Assert.AreEqual(true, s.Subs[x] is Instance.Definite def4_1 && def4_1.Definition.Equals(five));
+            Assert.AreEqual(true, s.Subs[y] is Instance.Definite def4_2 && def4_2.Definition.Equals(six));
         }
 
         [TestMethod]

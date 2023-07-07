@@ -3,7 +3,7 @@ using System.Text;
 
 namespace DunKanren
 {
-    public class Cons<T1, T2> : Term, IUnifiable<Cons<T1, T2>>
+    public class Cons<T1, T2> : Term
         where T1 : Term
         where T2 : Term
     {
@@ -21,29 +21,10 @@ namespace DunKanren
 
         public override uint Ungroundedness => this.Car.Ungroundedness + this.Cdr.Ungroundedness;
 
-        public override Term Dereference(State s)
-        {
-            return Cons.Truct(this.Car.Dereference(s), this.Cdr.Dereference(s));
-        }
-
         public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
         public override bool TermEquals<D1, D2>(State s, Cons<D1, D2> other)
         {
             return this.Car.TermEquals(s, other.Car) && this.Cdr.TermEquals(s, other.Cdr);
-        }
-
-        public override bool TryUnifyWith(State s, Term other, out State result) =>
-            other.TryUnifyWith(s, this, out result);
-
-        public override bool TryUnifyWith<D1, D2>(State s, Cons<D1, D2> other, out State result)
-        {
-            return this.Car.TryUnifyWith(s, other.Car, out result)
-                && this.Cdr.TryUnifyWith(result, other.Cdr, out result);
-        }
-
-        public override bool TryUnifyWith<D1, D2>(State s, Variable<Cons<D1, D2>> other, out State result)
-        {
-            return s.TryExtend(other, this, out result);
         }
 
         public override string ToString()
@@ -61,12 +42,6 @@ namespace DunKanren
                 return $"( {this.Car} . {this.Cdr} )";
             }
         }
-
-        public bool TryUnifyWith(State s, Cons<T1, T2> other, out State result) => this.TryUnifyWith<T1, T2>(s, other, out result);
-
-        public bool TryUnifyWith(State s, Variable<Cons<T1, T2>> other, out State result) => s.TryExtend(other, this, out result);
-
-        public bool TryUnifyWith(State s, IUnifiable<Cons<T1, T2>> other, out State result) => other.TryUnifyWith(s, this, out result);
     }
 
     public class ConsCell : Cons<Term, Term>
@@ -160,10 +135,6 @@ namespace DunKanren
 
         public override uint Ungroundedness => Term.NIL.Ungroundedness;
         public override bool TermEquals(State s, Term other) => other.TermEquals(s, Term.NIL);
-        public override bool TryUnifyWith(State s, Term other, out State result)
-        {
-            return other.TryUnifyWith(s, Term.NIL, out result);
-        }
 
         public override string ToString() => Term.NIL.ToString();
         public override string ToVerboseString() => Term.NIL.ToVerboseString();
@@ -209,7 +180,7 @@ namespace DunKanren
         }
     }
 
-    public class LCons : Term, IUnifiable<LCons>
+    public class LCons : Term
     {
         public Term Car { get; init; }
         public Term Cdr { get; init; }
@@ -265,25 +236,11 @@ namespace DunKanren
 
         public override uint Ungroundedness => this.Car.Ungroundedness + this.Cdr.Ungroundedness;
 
-        public override Term Dereference(State s)
-        {
-            return LCons.Truct(this.Car.Dereference(s), this.Cdr.Dereference(s));
-        }
-
         public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
         public override bool TermEquals(State s, LCons other)
         {
             return this.Car.TermEquals(s, other.Car) && this.Cdr.TermEquals(s, other.Cdr);
         }
-
-        public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);
-        public override bool TryUnifyWith(State s, LCons other, out State result)
-        {
-            return this.Car.TryUnifyWith(s, other.Car, out result)
-                && this.Cdr.TryUnifyWith(result, other.Cdr, out result);
-        }
-
-        public bool TryUnifyWith(State s, IUnifiable<LCons> other, out State result) => other.TryUnifyWith(s, this, out result);
 
         public override string ToString()
         {

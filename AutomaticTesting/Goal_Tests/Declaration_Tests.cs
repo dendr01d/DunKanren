@@ -21,11 +21,12 @@
             Assert.AreEqual(1, str1.Count());
 
             State s1 = str1.First();
+            Assert.AreEqual(3, s1.Subs.Count);
             Assert.AreEqual(true, s1.Subs.Keys.Any(x => x.Symbol == "a"));
             Assert.AreEqual(true, s1.Subs.Keys.Any(x => x.Symbol == "b"));
             Assert.AreEqual(true, s1.Subs.Keys.Any(x => x.Symbol == "c"));
 
-            Assert.AreEqual(0, s1.RecursionLevel);
+            Assert.AreEqual(1, s1.RecursionLevel);
 
 
             Func<Variable, Variable, Variable, Goal> f = (x, y, z) => new Top();
@@ -36,11 +37,12 @@
             Assert.AreEqual(1, str2.Count());
 
             State s2 = str2.First();
+            Assert.AreEqual(3, s2.Subs.Count);
             Assert.AreEqual(true, s2.Subs.Keys.Any(x => x.Symbol == "x"));
             Assert.AreEqual(true, s2.Subs.Keys.Any(x => x.Symbol == "y"));
             Assert.AreEqual(true, s2.Subs.Keys.Any(x => x.Symbol == "z"));
 
-            Assert.AreEqual(0, s2.RecursionLevel);
+            Assert.AreEqual(1, s2.RecursionLevel);
         }
 
         //[TestMethod]
