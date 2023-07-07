@@ -15,25 +15,26 @@ namespace DunKanren
         where T : Term
     {
         public readonly bool IsNil;
-        public readonly T? RealValue;
+        private T? _value;
+        public Term GetValue() => Deconstruct<Term>(x => x, x => x);
 
         public MaybeNil()
         {
             this.IsNil = true;
-            this.RealValue = null;
+            _value = null;
         }
 
         public MaybeNil(T value)
         {
             this.IsNil = false;
-            this.RealValue = value;
+            _value = value;
         }
 
         public R Deconstruct<R>(Func<T, R> realCase, Func<Nil, R> nilCase)
         {
-            if (!this.IsNil && !ReferenceEquals(null, this.RealValue))
+            if (!this.IsNil && _value is not null)
             {
-                return realCase(this.RealValue);
+                return realCase(_value);
             }
             return nilCase(Term.NIL);
         }

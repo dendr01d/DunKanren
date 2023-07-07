@@ -8,10 +8,10 @@ namespace DunKanren
         {
             return new Conj()
             {
-                LCons.Truct(car, cdr) == cons,
-                //(cons is LCons ? new Top() : new Bottom()),
-                //((cons as LCons)?.Car ?? Term.NIL) == car,
-                //((cons as LCons)?.Cdr ?? Term.NIL) == cdr,
+                Cons.Truct(car, cdr) == cons,
+                //(cons is Cons ? new Top() : new Bottom()),
+                //((cons as Cons)?.Car ?? Term.NIL) == car,
+                //((cons as Cons)?.Cdr ?? Term.NIL) == cdr,
             };
         }
 
@@ -29,8 +29,8 @@ namespace DunKanren
                     c != Term.NIL,
                     new CallFresh((first, aRest, cRest) => new Conj()
                     {
-                        LCons.Truct(first, aRest) == a,
-                        LCons.Truct(first, cRest) == c,
+                        Cons.Truct(first, aRest) == a,
+                        Cons.Truct(first, cRest) == c,
                         Appendo(aRest, b, cRest)
                     })
                 }
@@ -202,17 +202,17 @@ namespace DunKanren
 
                         new Conj()
                         {
-                            Membero(Aramis_P, LCons.TructList(hotel, jardin, estate)),
-                            Membero(Athos_P, LCons.TructList(hotel, jardin, estate)),
-                            Membero(Pathos_P, LCons.TructList(hotel, jardin, estate)),
-                            Membero(Constance_P, LCons.TructList(hotel, jardin, estate))
+                            Membero(Aramis_P, Cons.Truct(hotel, jardin, estate)),
+                            Membero(Athos_P, Cons.Truct(hotel, jardin, estate)),
+                            Membero(Pathos_P, Cons.Truct(hotel, jardin, estate)),
+                            Membero(Constance_P, Cons.Truct(hotel, jardin, estate))
                         },
 
                         new Conj()
                         {
-                            Membero(Aramis_A, LCons.TructList(musket, duel, rendM)),
-                            Membero(Athos_A, LCons.TructList(musket, duel, rendM)),
-                            Membero(Pathos_A, LCons.TructList(musket, duel, rendM)),
+                            Membero(Aramis_A, Cons.Truct(musket, duel, rendM)),
+                            Membero(Athos_A, Cons.Truct(musket, duel, rendM)),
+                            Membero(Pathos_A, Cons.Truct(musket, duel, rendM)),
                             Constance_A == rendF
                         },
 
@@ -319,8 +319,8 @@ namespace DunKanren
         //                Pathos == Cons.Truct(Pathos_Doing, Pathos_Location),
         //                Constance == Cons.Truct(Constance_Doing, Constance_Location),
 
-        //                Bijecto(LCons.TructList(Aramis_Doing, Athos_Doing, Pathos_Doing), LCons.TructList(musket, rendezvous, duel)),
-        //                Bijecto(LCons.TructList(Aramis_Location, Athos_Location, Pathos_Location), LCons.TructList(hotel, jardin, estate)),
+        //                Bijecto(Cons.TructList(Aramis_Doing, Athos_Doing, Pathos_Doing), Cons.TructList(musket, rendezvous, duel)),
+        //                Bijecto(Cons.TructList(Aramis_Location, Athos_Location, Pathos_Location), Cons.TructList(hotel, jardin, estate)),
 
         //                new Impl
         //                (
@@ -380,11 +380,11 @@ namespace DunKanren
                     Victim == ValueFactory.Sym("Victim at the beach"),
                     Loner == ValueFactory.Sym("Bystander elsewhere"),
 
-                    Membero(Alice, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
-                    Membero(Husband, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
-                    Membero(Brother, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
-                    Membero(Son, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
-                    Membero(Daughter, LCons.TructList(BarMan, BarWoman, Killer, Victim, Loner)),
+                    Membero(Alice, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
+                    Membero(Husband, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
+                    Membero(Brother, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
+                    Membero(Son, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
+                    Membero(Daughter, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
 
                     new Conj()
                     {
@@ -396,8 +396,8 @@ namespace DunKanren
 
                     //setup complete?
 
-                    Membero(BarMan, LCons.TructList(Husband, Brother, Son)),
-                    Membero(BarWoman, LCons.TructList(Alice, Daughter)),
+                    Membero(BarMan, Cons.Truct(Husband, Brother, Son)),
+                    Membero(BarWoman, Cons.Truct(Alice, Daughter)),
 
                     new XOR()
                     {
@@ -454,9 +454,9 @@ namespace DunKanren
 
             //Goal g = new CallFresh(x => Sharedo("abc", x));
 
-            //Goal g = new CallFresh(x => Membero(x, LCons.TructList('a', 'b', 'c')));
+            //Goal g = new CallFresh(x => Membero(x, Cons.TructList('a', 'b', 'c')));
 
-            //Goal g = new CallFresh(x => NotMembero('b', LCons.TructList('a', x, 'c')));
+            //Goal g = new CallFresh(x => NotMembero('b', Cons.TructList('a', x, 'c')));
 
             //Goal g = new CallFresh(x => Removeo('a', "abcd", x));
 

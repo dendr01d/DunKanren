@@ -24,6 +24,8 @@ namespace DunKanren
                 Definition = definition;
             }
 
+            public override uint Ungroundedness => 0;
+
             public override bool TermEquals(State s, Term other) => Definition.TermEquals(s, other);
 
             public override string ToString() => Definition.ToString();
@@ -35,11 +37,13 @@ namespace DunKanren
         public sealed class Indefinite : Instance
         {
             private readonly ImmutableHashSet<Predicate<Term>> _restrictions;
+            public int RuleCount => _restrictions.Count;
 
             public Indefinite(params Predicate<Term>[] preds)
             {
                 _restrictions = preds.ToImmutableHashSet();
             }
+            public override uint Ungroundedness => 0; //no good way to quantify according to number of restrictions?
 
             public override bool TermEquals(State s, Term other) => ReferenceEquals(this, other);
 

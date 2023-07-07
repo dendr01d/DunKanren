@@ -26,8 +26,7 @@ namespace DunKanren
         public virtual bool TermEquals<D>(State s, Value<D> other) => false;
         public virtual bool TermEquals(State s, Number other) => false;
         public virtual bool TermEquals(State s, Nil other) => false;
-        public virtual bool TermEquals(State s, LCons other) => false;
-        public virtual bool TermEquals<D1, D2>(State s, Cons<D1, D2> other) where D1 : Term where D2 : Term => false;
+        public virtual bool TermEquals(State s, Cons other) => false;
         //public virtual bool SameAs<T>(State s, Cont<T> other) where T : Term => false;
         //public virtual bool SameAs(State s, Seq other) => false;
 
@@ -67,8 +66,8 @@ namespace DunKanren
         public static implicit operator Term((int, int) ii) => new Number(ii.Item1, ii.Item2);
 
         public static implicit operator Term(char c) => ValueFactory.Box(c);
-        public static implicit operator Term(bool b) => b ? Term.True : Term.False;
-        public static implicit operator Term(string s) => LCons.Truct(s);
+        public static implicit operator Term(bool b) => b ? True : False;
+        public static implicit operator Term(string s) => Cons.Truct(s);
         //public static implicit operator Term(string s) => new Seq(s.Select(x => ValueFactory.Box(x)).ToArray());
 
         #endregion

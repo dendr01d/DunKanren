@@ -97,7 +97,7 @@ namespace DunKanren
                     return def.Definition;
                 }
             }
-            else if (t is Cons<Term, Term> c)
+            else if (t is Cons c)
             {
                 return Cons.Truct(Walk(c.Car), Walk(c.Cdr));
             }
@@ -118,18 +118,18 @@ namespace DunKanren
 
             if (!alpha.TermEquals(this, u) || !beta.TermEquals(this, v)) IO.Debug_Print("===> " + alpha.ToString() + " EQ? " + beta.ToString());
 
-            if (u is Variable uV)
+            if (alpha is Variable alphaVar)
             {
-                return TryExtend(uV, v, out result);
+                return TryExtend(alphaVar, beta, out result);
             }
-            else if (v is Variable vV)
+            else if (beta is Variable betaVar)
             {
-                return TryExtend(vV, u, out result);
+                return TryExtend(betaVar, alpha, out result);
             }
             else
             {
                 result = this;
-                return u.Equals(v);
+                return alpha.TermEquals(this, beta);
             }
         }
 
@@ -224,6 +224,7 @@ namespace DunKanren
                     //otherwise add the new constraint to the list
                     result = new(this, false);
                     result.Subs = result.Subs.Remove(v).Add(v, indef.AddRestriction(pred));
+                    return true;
                 }
             }
 
