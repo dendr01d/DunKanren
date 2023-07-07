@@ -4,123 +4,123 @@ namespace DunKanren
 {
     internal class Program
     {
-        static Goal Puzzle()
-        {
-            return new CallFresh((Aramis, Athos, Pathos, Constance) =>
-                new CallFresh((Aramis_P, Athos_P, Pathos_P, Constance_P, hotel, jardin, estate) =>
-                    new CallFresh((Aramis_A, Athos_A, Pathos_A, Constance_A, musket, duel, rendM, rendF) => new Conj()
-                    {
-                        hotel == ValueFactory.Sym("Hotel Treville"),
-                        jardin == ValueFactory.Sym("Jardin du Luxembourg"),
-                        estate == ValueFactory.Sym("Geroge Villier's Estate"),
+        //static Goal Puzzle()
+        //{
+        //    return new CallFresh((Aramis, Athos, Pathos, Constance) =>
+        //        new CallFresh((Aramis_P, Athos_P, Pathos_P, Constance_P, hotel, jardin, estate) =>
+        //            new CallFresh((Aramis_A, Athos_A, Pathos_A, Constance_A, musket, duel, rendM, rendF) => new Conj()
+        //            {
+        //                hotel == ValueFactory.Sym("Hotel Treville"),
+        //                jardin == ValueFactory.Sym("Jardin du Luxembourg"),
+        //                estate == ValueFactory.Sym("Geroge Villier's Estate"),
 
-                        musket == ValueFactory.Sym("Cleaning his musket"),
-                        duel == ValueFactory.Sym("Dueling Cardinal Richelieu"),
-                        rendF == ValueFactory.Sym("Meeting with a man"),
-                        rendM == ValueFactory.Sym("Meeting with a woman"),
+        //                musket == ValueFactory.Sym("Cleaning his musket"),
+        //                duel == ValueFactory.Sym("Dueling Cardinal Richelieu"),
+        //                rendF == ValueFactory.Sym("Meeting with a man"),
+        //                rendM == ValueFactory.Sym("Meeting with a woman"),
 
-                        Aramis == Cons.Truct(Aramis_P, Aramis_A),
-                        Athos == Cons.Truct(Athos_P, Athos_A),
-                        Pathos == Cons.Truct(Pathos_P, Pathos_A),
-                        Constance == Cons.Truct(Constance_P, Constance_A),
+        //                Aramis == Cons.Truct(Aramis_P, Aramis_A),
+        //                Athos == Cons.Truct(Athos_P, Athos_A),
+        //                Pathos == Cons.Truct(Pathos_P, Pathos_A),
+        //                Constance == Cons.Truct(Constance_P, Constance_A),
 
-                        new Conj()
-                        {
-                            StdGoals.Membero(Aramis_P, Cons.Truct(hotel, jardin, estate)),
-                            StdGoals.Membero(Athos_P, Cons.Truct(hotel, jardin, estate)),
-                            StdGoals.Membero(Pathos_P, Cons.Truct(hotel, jardin, estate)),
-                            StdGoals.Membero(Constance_P, Cons.Truct(hotel, jardin, estate))
-                        },
+        //                new Conj()
+        //                {
+        //                    StdGoals.Membero(Aramis_P, Cons.Truct(hotel, jardin, estate)),
+        //                    StdGoals.Membero(Athos_P, Cons.Truct(hotel, jardin, estate)),
+        //                    StdGoals.Membero(Pathos_P, Cons.Truct(hotel, jardin, estate)),
+        //                    StdGoals.Membero(Constance_P, Cons.Truct(hotel, jardin, estate))
+        //                },
 
-                        new Conj()
-                        {
-                            StdGoals.Membero(Aramis_A, Cons.Truct(musket, duel, rendM)),
-                            StdGoals.Membero(Athos_A, Cons.Truct(musket, duel, rendM)),
-                            StdGoals.Membero(Pathos_A, Cons.Truct(musket, duel, rendM)),
-                            Constance_A == rendF
-                        },
+        //                new Conj()
+        //                {
+        //                    StdGoals.Membero(Aramis_A, Cons.Truct(musket, duel, rendM)),
+        //                    StdGoals.Membero(Athos_A, Cons.Truct(musket, duel, rendM)),
+        //                    StdGoals.Membero(Pathos_A, Cons.Truct(musket, duel, rendM)),
+        //                    Constance_A == rendF
+        //                },
 
-                        new Conj()
-                        {
-                            Aramis_P != Athos_P,
-                            Athos_P != Pathos_P,
-                            Pathos_P != Aramis_P
-                        },
+        //                new Conj()
+        //                {
+        //                    Aramis_P != Athos_P,
+        //                    Athos_P != Pathos_P,
+        //                    Pathos_P != Aramis_P
+        //                },
 
-                        new Conj()
-                        {
-                            Aramis_A != Athos_A,
-                            Athos_A != Pathos_A,
-                            Pathos_A != Aramis_A
-                        },
+        //                new Conj()
+        //                {
+        //                    Aramis_A != Athos_A,
+        //                    Athos_A != Pathos_A,
+        //                    Pathos_A != Aramis_A
+        //                },
 
-                        //setup complete
+        //                //setup complete
 
-                        new Disj()
-                        {
-                            new Conj()
-                            {
-                                Aramis_P != jardin,
-                                Athos != jardin
-                            },
-                            new Disj()
-                            {
-                                Aramis == Cons.Truct(hotel, musket),
-                                Athos == Cons.Truct(hotel, musket),
-                                Pathos == Cons.Truct(hotel, musket)
-                            }
-                        },
+        //                new Disj()
+        //                {
+        //                    new Conj()
+        //                    {
+        //                        Aramis_P != jardin,
+        //                        Athos != jardin
+        //                    },
+        //                    new Disj()
+        //                    {
+        //                        Aramis == Cons.Truct(hotel, musket),
+        //                        Athos == Cons.Truct(hotel, musket),
+        //                        Pathos == Cons.Truct(hotel, musket)
+        //                    }
+        //                },
 
-                        new Conj()
-                        {
-                            Pathos_A != duel,
-                            new Conj()
-                            {
-                                Aramis != Cons.Truct(jardin, duel),
-                                Athos != Cons.Truct(jardin, duel),
-                                Pathos != Cons.Truct(jardin, duel)
-                            }
-                        },
+        //                new Conj()
+        //                {
+        //                    Pathos_A != duel,
+        //                    new Conj()
+        //                    {
+        //                        Aramis != Cons.Truct(jardin, duel),
+        //                        Athos != Cons.Truct(jardin, duel),
+        //                        Pathos != Cons.Truct(jardin, duel)
+        //                    }
+        //                },
 
-                        new Conj()
-                        {
-                            Aramis_A != musket,
-                            Aramis_P != hotel
-                        },
+        //                new Conj()
+        //                {
+        //                    Aramis_A != musket,
+        //                    Aramis_P != hotel
+        //                },
 
-                        new Disj()
-                        {
-                            Pathos_A != musket,
-                            Constance_P != jardin
-                        },
+        //                new Disj()
+        //                {
+        //                    Pathos_A != musket,
+        //                    Constance_P != jardin
+        //                },
 
-                        new Conj()
-                        {
-                            new Disj()
-                            {
-                                Pathos_P != estate,
-                                new Disj()
-                                {
-                                    Aramis == Cons.Truct(estate, duel),
-                                    Athos == Cons.Truct(estate, duel),
-                                    Pathos == Cons.Truct(estate, duel)
-                                }
-                            },
-                            new Disj()
-                            {
-                                new Conj()
-                                {
-                                    Aramis != Cons.Truct(estate, duel),
-                                    Athos != Cons.Truct(estate, duel),
-                                    Pathos != Cons.Truct(estate, duel)
-                                },
-                                Pathos_P == estate
-                            }
-                        },
+        //                new Conj()
+        //                {
+        //                    new Disj()
+        //                    {
+        //                        Pathos_P != estate,
+        //                        new Disj()
+        //                        {
+        //                            Aramis == Cons.Truct(estate, duel),
+        //                            Athos == Cons.Truct(estate, duel),
+        //                            Pathos == Cons.Truct(estate, duel)
+        //                        }
+        //                    },
+        //                    new Disj()
+        //                    {
+        //                        new Conj()
+        //                        {
+        //                            Aramis != Cons.Truct(estate, duel),
+        //                            Athos != Cons.Truct(estate, duel),
+        //                            Pathos != Cons.Truct(estate, duel)
+        //                        },
+        //                        Pathos_P == estate
+        //                    }
+        //                },
 
-                        Constance_P != hotel
-                    })));
-        }
+        //                Constance_P != hotel
+        //            })));
+        //}
 
         //static Goal PuzzleNew()
         //{
@@ -263,7 +263,15 @@ namespace DunKanren
 
         static void Main()
         {
-            Goal g = Puzzle();
+            //Goal g = Puzzle();
+
+            Goal g = new CallFresh((x, y, z) => new Conj() {
+                new CallFresh(w => new Conj()
+                {
+                    StdGoals.Appendo(x, y, w),
+                    StdGoals.Appendo(w, z, "Duncan")
+                })
+            });
 
             //Goal g = new CallFresh((x, y) => new Conj(x == 5, y == 6));
 
@@ -301,11 +309,11 @@ namespace DunKanren
                     Console.WriteLine("--------------------------------------------------\n");
                     Console.WriteLine(iter.Current.ToString(1));
                     //Console.WriteLine(String.Join("\n", iter.Current.Subs.Select(x => $"{x.Key}: {x.Value}")));
-                    IO.Prompt(true);
-                    Console.WriteLine();
-                    Console.WriteLine(IO.Graft(g.ToTree()));
-                    ++answers;
+                    //IO.Prompt(true);
+                    //Console.WriteLine();
+                    //Console.WriteLine(IO.Graft(g.ToTree()));
 
+                    ++answers;
                     IO.Prompt(true);
                 }
             }

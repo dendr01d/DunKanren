@@ -14,27 +14,48 @@ namespace DunKanren
             return this.Car.TermEquals(s, other.Car) && this.Cdr.TermEquals(s, other.Cdr);
         }
 
+        private static bool IsList<T>(Cons c)
+            where T : Term
+        {
+            return c.Car is T && (c.Cdr is Nil || (c.Cdr is Cons cc && IsList<T>(cc)));
+        }
+
+        public override string ToString()
+        {
+            if (IsList<Value<char>>(this))
+            {
+                return $"{Car}{Cdr}";
+            }
+            else if (Cdr is not Cons and not Nil)
+            {
+                return $"{Car} . {Cdr}";
+            }
+            else
+            {
+                return $"{Car}, {Cdr}";
+            }
+        }
+
         #region Static Constructors
 
-        public static Cell<T1, T2> Truct<T1, T2>(T1 car, T2 cdr)
+        public static Cons Truct<T1, T2>(T1 car, T2 cdr)
             where T1 : Term
             where T2 : Term
         {
+            //return (car, cdr) switch
+            //{
+            //    (Value<char> newCar, Nil) => new Seq<Value<char>>.ConsString(newCar),
+            //    (Value<char> newCar, Value<char> newCdr) => new Seq<Value<char>>.List(newCar, new Seq<Value<char>>.List(newCdr)),
+            //    (Value<char> newCar, Seq<Value<char>> newCdr) => new Seq<Value<char>>.List(newCar, newCdr),
+
+            //    (T1, Nil) => new Seq<T1>.List(car),
+            //    (T1, T1 newCdr) => new Seq<T1>.List(car, new Seq<T1>.List(newCdr)),
+            //    (T1, Seq<T1> newCdr) => new Seq<T1>.List(car, newCdr),
+
+            //    (_, _) => new Cell<T1, T2>.Pair(car, cdr)
+            //};
+
             return new Cell<T1, T2>.Pair(car, cdr);
-        }
-
-        public static Seq<T> Truct<T>(T car, Seq<T> cdr)
-            where T : Term
-        {
-            return new Seq<T>.List(car, cdr);
-        }
-
-        public static Seq<T> Truct<T>(T car, params T[] more)
-            where T : Term
-        {
-            return more.Any()
-                ? new Seq<T>.List(car, Truct(more[0], more[1..]))
-                : new Seq<T>.List(car);
         }
 
         public static Seq<Value<char>>.ConsString Truct(string s)
@@ -66,7 +87,6 @@ namespace DunKanren
                 public override T1 Car => _car;
                 public override T2 Cdr => _cdr;
                 public Pair(T1 car, T2 cdr) : base(car, cdr) { }
-                public override string ToString() => $"{_car} . {_cdr}";
             }
         }
 
@@ -84,15 +104,12 @@ namespace DunKanren
             {
                 public List(L car, Seq<L> cdr) : base(car, cdr) { }
                 public List(L car) : base(car) { }
-                public override string ToString() => $"{Car}, {Cdr}";
             }
 
             public sealed class ConsString : Seq<Value<char>>
             {
                 public ConsString(Value<char> car, Seq<Value<char>> cdr) : base(car, cdr) { }
                 public ConsString(Value<char> car) : base(car) { }
-
-                public override string ToString() => $"{Car}{Cdr}";
             }
         }
     }

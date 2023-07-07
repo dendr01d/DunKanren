@@ -88,14 +88,7 @@ namespace DunKanren
                 && Subs.TryGetValue(v, out Instance? inst)
                 && inst is Instance.Definite def)
             {
-                if (def.Definition is Variable v2)
-                {
-                    return Walk(v2);
-                }
-                else
-                {
-                    return def.Definition;
-                }
+                return Walk(def.Definition);
             }
             else if (t is Cons c)
             {
@@ -109,7 +102,7 @@ namespace DunKanren
         {
             return Subs.Where(x => x.Key.Symbol == symbol).FirstOrDefault() is var pair
                 && pair.Value is Instance.Definite def
-                ? def.Definition
+                ? Walk(def.Definition)
                 : null;
         }
 
@@ -215,6 +208,38 @@ namespace DunKanren
             //we're looking at two concrete terms then, so it comes down to whether they're equal or not
             result = this;
             return !u.TermEquals(this, v);
+        }
+
+        public bool TryConstrainType<T>(Term t, out State result)
+            where T : Term
+        {
+            IO.Debug_Print($"Is {t} a <{typeof(T)}>?");
+
+            if (t is Variable v)
+            {
+                return TryConstrain(v, x => x is T, out result);
+            }
+            else
+            {
+                result = this;
+                return t is T;
+            }
+        }
+
+        public bool TryConstrainNotType<T>(Term t, out State result)
+            where T : Term
+        {
+            IO.Debug_Print($"Is {t} not a <{typeof(T)}>?");
+
+            if (t is Variable v)
+            {
+                return TryConstrain(v, x => x is not T, out result);
+            }
+            else
+            {
+                result = this;
+                return t is T;
+            }
         }
 
         private bool TryConstrain(Variable v, Predicate<Term> pred, out State result)

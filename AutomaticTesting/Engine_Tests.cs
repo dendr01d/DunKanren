@@ -69,6 +69,18 @@
             Solve(g);
         }
 
+        [TestMethod]
+        public void Test_DoubleAppendo()
+        {
+            Goal g = new CallFresh((x, y, z) => new Conj() {
+                new CallFresh(w => new Conj()
+                {
+                    StdGoals.Appendo(x, y, w),
+                    StdGoals.Appendo(w, z, "Duncan")
+                })
+            });
+        }
+
         //[TestMethod]
         //[Timeout(2000)]  // Milliseconds
         //public void Test_Appendo_Simple()

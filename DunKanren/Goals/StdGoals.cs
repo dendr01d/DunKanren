@@ -8,6 +8,17 @@ namespace DunKanren.Goals
 {
     public static class StdGoals
     {
+        public static Goal Assert(bool statement)
+        {
+            return statement ? new Top() : new Bottom();
+        }
+
+        public static Goal TypeCheck<T>(Term t)
+            where T : Term
+        {
+            return new Typed<T>(t);
+        }
+
         public static Goal Conso(Term car, Term cdr, Term cons)
         {
             return new Conj()
@@ -27,7 +38,6 @@ namespace DunKanren.Goals
                 },
                 new Conj()
                 {
-                    c != Term.NIL,
                     new CallFresh((first, aRest, cRest) => new Conj()
                     {
                         Cons.Truct(first, aRest) == a,
