@@ -7,12 +7,13 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
+using System.Collections.Immutable;
+
 namespace DunKanren
 {
     public class State : IPrintable, IGrounded
     {
-        public readonly Dictionary<Variable, Term> Subs;
-        public readonly Dictionary<Variable, HashSet<Term>> Negs;
+        public ImmutableDictionary<Variable, Instance> Subs;
 
         public int VariableCounter;
         public readonly int RecursionLevel;
@@ -21,16 +22,14 @@ namespace DunKanren
 
         private State()
         {
-            this.Subs = new Dictionary<Variable, Term>();
-            this.Negs = new Dictionary<Variable, HashSet<Term>>();
+            this.Subs = ImmutableDictionary.Create<Variable, Instance>();
 
             this.RecursionLevel = 0;
         }
 
         private State(State s, bool recursing) : this()
         {
-            this.Subs = new Dictionary<Variable, Term>(s.Subs);
-            this.Negs = s.Negs.ToDictionary(x => x.Key, x => new HashSet<Term>(x.Value));
+            this.Subs = s.Subs.ToDictionary(x => x.Key, x => x.Value).ToImmutableDictionary();
 
             this.VariableCounter = s.VariableCounter;
             this.RecursionLevel = recursing ? s.RecursionLevel + 1 : s.RecursionLevel;
@@ -66,24 +65,6 @@ namespace DunKanren
             return t.Dereference(this);
         }
 
-        public Term Reify(Term original, ref List<Term> constraints)
-        {
-            if (original is Variable v)
-            {
-                if (this.Negs.TryGetValue(v, out var negs))
-                {
-                    constraints.AddRange(negs);
-                }
-
-                if (this.Subs.TryGetValue(v, out Term? t) && !t.Equals(null) && !t.Equals(original))
-                {
-                    return Reify(t, ref constraints);
-                }
-            }
-
-            return original;
-        }
-
         public Term? LookupBySymbol(string symbol)
         {
             return this.Subs.Where(x => x.Key.Symbol == symbol).FirstOrDefault().Value;
@@ -95,69 +76,49 @@ namespace DunKanren
             Term alpha = this.Walk(u);
             Term beta = this.Walk(v);
 
-            if (!alpha.SameAs(this, u) || !beta.SameAs(this, v)) IO.Debug_Print("===> " + alpha.ToString() + " EQ? " + beta.ToString());
+            if (!alpha.TermEquals(this, u) || !beta.TermEquals(this, v)) IO.Debug_Print("===> " + alpha.ToString() + " EQ? " + beta.ToString());
 
             return alpha.TryUnifyWith(this, beta, out result);
         }
 
         public bool TryExtend(Variable v, Term t, out State result)
         {
-            if (this.Negs.TryGetValue(v, out var ns) && ns.Contains(t))
+            if (Subs.TryGetValue(v, out Instance? inst))
             {
-                //if the new substitution violates a constraint, fail right off the bat
-                IO.Debug_Print(v.ToString() + " NEV " + t.ToString());
-                result = this;
-                return false;
-            }
-            else if (this.Subs.TryGetValue(v, out var ss2) && ss2.Equals(t))
-            {
-                //if the terms are already equal without any new substitutions, succeed
-                result = this;
-                return VerifyConstraints(ref result);
-            }
-            else if (!this.Subs.ContainsKey(v) || (this.Subs.TryGetValue(v, out var ss) && ss.Equals(v)))
-            {
+                //if this state already has a linked instance for that variable...
 
-                result = new(this, false);
-                result.Subs[v] = t;
-
-                if (!this.Subs.ContainsKey(v))
+                if (inst is Instance.Definite def)
                 {
-                    result.VariableCounter++;
+                    //if the variable is already defined,
+                    //fail, unless the definitions happen to be equal
+                    result = this;
+                    return def.Definition.Equals(t);
                 }
-
-                IO.Debug_Print(v.ToString() + " DEF " + t + " in " + result.ToString());
-                return VerifyConstraints(ref result);
-            }
-            else //should only occur if it's attempting to redefine an existing variable binding?
-            {
-                //throw new InvalidOperationException();
-                result = this;
-                return false;
-            }
-        }
-
-        private static bool VerifyConstraints(ref State result)
-        {
-            foreach (var kvp in result.Negs)
-            {
-                Variable lastKey = kvp.Key;
-
-                while (lastKey.Dereference(result) is Variable t && !t.Equals(lastKey))
+                else if (inst is Instance.Indefinite indef)
                 {
-                    if (result.Subs.TryGetValue(lastKey, out Term? tDef)
-                        && !ReferenceEquals(tDef, null)
-                        && kvp.Value.Contains(tDef))
+                    //if the variable is undefined, check to make sure it fits the constraints
+                    //complete the extension if everything checks out
+                    if (indef.CongruentWith(t))
                     {
-                        result = State.InitialState();
+                        result = new(this, false);
+                        result.Subs = result.Subs.Remove(v).Add(v, indef.BindTo(t));
+                        return true;
+                    }
+                    else
+                    {
+                        result = this;
                         return false;
                     }
-
-                    lastKey = t;
                 }
             }
 
-            return true;
+            //if we've fallen through to this point, either the state doesn't know the variable
+            //or the variable's definition is somehow invalid/null
+
+            throw new InvalidOperationException($"Tried to extend state with variable {v} declared externally");
+
+            //result = this;
+            //return false;
         }
 
         public bool Affirm(Term u, Term v, out State result)
@@ -178,65 +139,55 @@ namespace DunKanren
         public bool TryDisUnify(Term u, Term v, out State result)
         {
             //See section 8 of Byrd's paper
+            //there are three possible outcomes
+            //hypothetical unification of the terms would fail -> disunification succeeds, as the two terms are definitionally not equal
+            //hypothetical unification succeeds without extension -> terms already equal, disunification fails
+            //hypothetical unification succeeds, but requires extension -> terms may or may not be equal, must be constrained
 
             IO.Debug_Print(u.ToString() + " NQ? " + v.ToString());
 
-            if (!this.TryUnify(u, v, out State unifiedResult))
+            //unification is only possible to start with if one of these terms is a variable
+            if (u is Variable uV)
             {
-                //if unification fails, then the two terms can never be equal
-                //and so we don't need to keep a constraint around to show it
-                IO.Debug_Print("===>\n" + u.ToString() + " NEV " + v.ToString() + "\n");
-                result = this;
-                return true;
+                return TryConstrain(uV, x => !x.TermEquals(this, v), out result);
             }
-            else if (unifiedResult == this)
+            else if (v is Variable vV)
             {
-                //if unification succeeds without extending the resulting state
-                //then the terms are ALREADY equal, and we've failed outright
-                IO.Debug_Print("===>\n" + u.ToString() + " EQL " + v.ToString() + "\n");
-                result = this;
-                return false;
+                return TryConstrain(vV, x => !x.TermEquals(this, u), out result);
             }
-            else
-            {
-                //if unification succeeds, but requires new subs TO succeed
-                //then we simply disallow any of those subs from ever being made
-                result = ConstrainValues(this, DifferentiateSubs(this, unifiedResult));
-                IO.Debug_Print("===>\n" + u.ToString() + " NDF " + v.ToString() + " in " + result.ToString());
-                return true;
-            }
+
+            //we're looking at two concrete terms then, so it comes down to whether they're equal or not
+            result = this;
+            return !u.TermEquals(this, v);
         }
 
-        private static Dictionary<Variable, Term> DifferentiateSubs(State oldState, State newState)
+        private bool TryConstrain(Variable v, Predicate<Term> pred, out State result)
         {
-            return new Dictionary<Variable, Term>(newState.Subs.Where(
-                x => 
-                !oldState.Subs.ContainsKey(x.Key) || //new key inserted
-                (oldState.Subs[x.Key].Equals(x.Key) && !newState.Subs[x.Key].Equals(x.Key)) || //frshly-declared var redefined
-                ((!oldState.Subs[x.Key]?.Equals(newState.Subs[x.Key])) ?? false)) //defined var redefined?
-                .Where(x => x.Value is not null)); //don't bother if so
-        }
-
-        private static State ConstrainValues(State prev, Dictionary<Variable, Term> newNegs)
-        {
-            State output = prev.Dupe();
-
-            foreach(var pair in newNegs)
+            if (Subs.TryGetValue(v, out Instance? inst))
             {
-                if (!output.Negs.ContainsKey(pair.Key))
+                if (inst is Instance.Definite def)
                 {
-                    output.Negs.Add(pair.Key, new HashSet<Term>());
+                    //if the variable is already bound to a term, check to see if that term passes the test
+                    result = this;
+                    return pred(def.Definition);
                 }
-
-                output.Negs[pair.Key].Add(pair.Value);
+                else if (inst is Instance.Indefinite indef)
+                {
+                    //otherwise add the new constraint to the list
+                    result = new(this, false);
+                    result.Subs = result.Subs.Remove(v).Add(v, indef.AddRestriction(pred));
+                }
             }
 
-            return output;
+            //can't constrain a variable that doesn't exist though
+            throw new InvalidOperationException($"Tried to constrain state with variable {v} declared externally");
+
         }
 
         public bool TryGetDefinition(string varName, out Term? direct, out Term? ultimate)
         {
-            if (this.Subs.Keys.Where(x => x.Symbol == varName).FirstOrDefault() is Variable key && !key.Equals(null))
+            if (this.Subs.Keys.Where(x => x.Symbol == varName).FirstOrDefault() is Variable key
+                && key is not null)
             {
                 direct = this.Subs[key];
                 ultimate = this.Walk(key);
@@ -251,29 +202,21 @@ namespace DunKanren
         public string GetName() => "State " + this.RecursionLevel + " (" + this.VariableCounter + " var/s)";
 
 
-        private string DefToString(KeyValuePair<Variable, Term> pair)
+        private string DefToString(KeyValuePair<Variable, Instance> pair)
         {
             StringBuilder sb = new();
-
-            List<Term> constraints = new();
-            Term reified = this.Reify(pair.Key, ref constraints);
 
             sb.Append('\t');
             sb.Append(pair.Key.ToString().PadLeft(this.KeyWidth + 3));
             sb.Append(" => ");
             sb.Append(pair.Value);
-            if (!reified.Equals(pair.Value)) sb.Append($" (-> {reified.ToString()})");
-            if (constraints.Any()) sb.Append($" ¬({String.Join(", ", constraints.Select(x => x.ToString()))})");
 
             return sb.ToString();
         }
 
-        private string DirectDefToString(KeyValuePair<Variable, Term> pair)
+        private string DirectDefToString(KeyValuePair<Variable, Instance> pair)
         {
             StringBuilder sb = new();
-
-            List<Term> constraints = new();
-            this.Reify(pair.Key, ref constraints);
 
             Term result = pair.Key.Dereference(this);
 
@@ -281,7 +224,6 @@ namespace DunKanren
             sb.Append(pair.Key.ToString().PadLeft(this.KeyWidth + 3));
             sb.Append(" => ");
             sb.Append(result is Variable ? "<Any>" : result.ToString());
-            if (constraints.Any()) sb.Append($" ¬({String.Join(", ", constraints.Select(x => x.ToString()))})");
 
             return sb.ToString();
         }
@@ -341,7 +283,7 @@ namespace DunKanren
             }
         }
 
-        private static IEnumerable<string> BranchHelper(string prefix, KeyValuePair<Variable, Term> pair, bool first, bool last)
+        private static IEnumerable<string> BranchHelper(string prefix, KeyValuePair<Variable, Instance> pair, bool first, bool last)
         {
             string parentPrefix = first ? "" : prefix + IO.BRANCH;
             string childPrefix = first ? "" : prefix + IO.JUMPER;

@@ -26,10 +26,10 @@ namespace DunKanren
             return Cons.Truct(this.Car.Dereference(s), this.Cdr.Dereference(s));
         }
 
-        public override bool SameAs(State s, Term other) => other.SameAs(s, this);
-        public override bool SameAs<D1, D2>(State s, Cons<D1, D2> other)
+        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
+        public override bool TermEquals<D1, D2>(State s, Cons<D1, D2> other)
         {
-            return this.Car.SameAs(s, other.Car) && this.Cdr.SameAs(s, other.Cdr);
+            return this.Car.TermEquals(s, other.Car) && this.Cdr.TermEquals(s, other.Cdr);
         }
 
         public override bool TryUnifyWith(State s, Term other, out State result) =>
@@ -159,7 +159,7 @@ namespace DunKanren
         public override Nil Car { get => Term.NIL; }
 
         public override uint Ungroundedness => Term.NIL.Ungroundedness;
-        public override bool SameAs(State s, Term other) => other.SameAs(s, Term.NIL);
+        public override bool TermEquals(State s, Term other) => other.TermEquals(s, Term.NIL);
         public override bool TryUnifyWith(State s, Term other, out State result)
         {
             return other.TryUnifyWith(s, Term.NIL, out result);
@@ -270,10 +270,10 @@ namespace DunKanren
             return LCons.Truct(this.Car.Dereference(s), this.Cdr.Dereference(s));
         }
 
-        public override bool SameAs(State s, Term other) => other.SameAs(s, this);
-        public override bool SameAs(State s, LCons other)
+        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
+        public override bool TermEquals(State s, LCons other)
         {
-            return this.Car.SameAs(s, other.Car) && this.Cdr.SameAs(s, other.Cdr);
+            return this.Car.TermEquals(s, other.Car) && this.Cdr.TermEquals(s, other.Cdr);
         }
 
         public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);

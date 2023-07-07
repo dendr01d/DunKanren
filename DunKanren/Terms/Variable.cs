@@ -21,7 +21,7 @@ namespace DunKanren
             this.ID = s.GenerateVariableID();
             this.RecursionLevel = s.RecursionLevel;
 
-            s.Subs.Add(this, this);
+            s.Subs = s.Subs.Add(this, new Instance.Indefinite());
         }
 
         protected Variable(Variable original)
@@ -35,19 +35,22 @@ namespace DunKanren
 
         public override Term Dereference(State s)
         {
-            if (s.Subs.TryGetValue(this, out Term? lookup) && lookup is not null && !lookup.Equals(this))
+            if (s.Subs.TryGetValue(this, out Instance? lookup)
+                && lookup is Instance.Definite def
+                && def.Definition is Variable newVar
+                && !newVar.Equals(this))
             {
                 return lookup.Dereference(s);
             }
             return this;
         }
 
-        public override bool SameAs(State s, Term other) => other.SameAs(s, this);
-        public override bool SameAs(State s, Variable other) => other.ID == this.ID;
+        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
+        public override bool TermEquals(State s, Variable other) => other.ID == this.ID;
 
         public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);
         public override bool TryUnifyWith(State s, Variable other, out State result) =>
-            other.SameAs(s, this)
+            other.TermEquals(s, this)
             ? s.Affirm(other, this, out result)
             : s.TryExtend(other, this, out result);
         public override bool TryUnifyWith<D>(State s, Variable<D> other, out State result) => other.TryUnifyWith(s, this, out result);
@@ -95,7 +98,7 @@ namespace DunKanren
         public bool TryUnifyWith(State s, T other, out State result) => s.TryExtend(this, other, out result);
 
         public bool TryUnifyWith(State s, Variable<T> other, out State result) =>
-            other.SameAs(s, this)
+            other.TermEquals(s, this)
             ? s.Affirm(other, this, out result)
             : s.Reject(other, this, out result);
 

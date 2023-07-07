@@ -98,12 +98,12 @@ namespace DunKanren
 
         //-------------------------
 
-        public override bool SameAs(State s, Term other) => other.SameAs(s, this);
-        public override bool SameAs(State s, Number other) => this.Numerator == other.Numerator && this.Denominator == other.Denominator;
+        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
+        public override bool TermEquals(State s, Number other) => this.Numerator == other.Numerator && this.Denominator == other.Denominator;
 
         public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);
         public override bool TryUnifyWith(State s, Number other, out State result) =>
-            this.SameAs(s, other)
+            this.TermEquals(s, other)
             ? s.Affirm(other, this, out result)
             : s.Reject(other, this, out result);
 

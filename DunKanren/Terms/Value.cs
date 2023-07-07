@@ -17,12 +17,12 @@ namespace DunKanren
             this.Data = data;
         }
 
-        public override bool SameAs(State s, Term other) => other.SameAs(s, this);
-        public override bool SameAs<O>(State s, Value<O> other) => other.Data!.Equals(this.Data);
+        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
+        public override bool TermEquals<O>(State s, Value<O> other) => other.Data!.Equals(this.Data);
 
         public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);
         public override bool TryUnifyWith<O>(State s, Value<O> other, out State result) =>
-            this.SameAs(s, other)
+            this.TermEquals(s, other)
             ? s.Affirm(other, this, out result)
             : s.Reject(other, this, out result);
 

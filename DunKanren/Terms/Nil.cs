@@ -4,8 +4,8 @@ namespace DunKanren
 {
     public class Nil : Term
     {
-        public override bool SameAs(State s, Term other) => other.SameAs(s, this);
-        public override bool SameAs(State s, Nil other) => true;
+        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
+        public override bool TermEquals(State s, Nil other) => true;
 
         public override bool TryUnifyWith(State s, Term other, out State result) => other.TryUnifyWith(s, this, out result);
         public override bool TryUnifyWith(State s, Nil other, out State result) => s.Affirm(other, this, out result);
@@ -43,9 +43,9 @@ namespace DunKanren
 
         public override uint Ungroundedness => this.Deconstruct(r => r.Ungroundedness, n => n.Ungroundedness);
 
-        public override bool SameAs(State s, Term other)
+        public override bool TermEquals(State s, Term other)
         {
-            return this.Deconstruct(r => r.SameAs(s, other), n => n.SameAs(s, other));
+            return this.Deconstruct(r => r.TermEquals(s, other), n => n.TermEquals(s, other));
         }
 
         public override bool TryUnifyWith(State s, Term other, out State result)

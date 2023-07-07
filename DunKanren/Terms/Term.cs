@@ -22,15 +22,15 @@ namespace DunKanren
         public Term Identity => this;
 
         #region Equivalence
-        public abstract bool SameAs(State s, Term other);
+        public abstract bool TermEquals(State s, Term other);
 
-        public virtual bool SameAs(State s, Variable other) => false;
-        public virtual bool SameAs<D>(State s, Variable<D> other) where D : Term => false;
-        public virtual bool SameAs<D>(State s, Value<D> other) => false;
-        public virtual bool SameAs(State s, Number other) => false;
-        public virtual bool SameAs(State s, Nil other) => false;
-        public virtual bool SameAs(State s, LCons other) => false;
-        public virtual bool SameAs<D1, D2>(State s, Cons<D1, D2> other) where D1 : Term where D2 : Term => false;
+        public virtual bool TermEquals(State s, Variable other) => false;
+        public virtual bool TermEquals<D>(State s, Variable<D> other) where D : Term => false;
+        public virtual bool TermEquals<D>(State s, Value<D> other) => false;
+        public virtual bool TermEquals(State s, Number other) => false;
+        public virtual bool TermEquals(State s, Nil other) => false;
+        public virtual bool TermEquals(State s, LCons other) => false;
+        public virtual bool TermEquals<D1, D2>(State s, Cons<D1, D2> other) where D1 : Term where D2 : Term => false;
         //public virtual bool SameAs<T>(State s, Cont<T> other) where T : Term => false;
         //public virtual bool SameAs(State s, Seq other) => false;
 
@@ -49,7 +49,7 @@ namespace DunKanren
         public abstract bool TryUnifyWith(State s, Term other, out State result);
 
         public virtual bool TryUnifyWith(State s, Variable other, out State result) =>
-            other.SameAs(s, this)
+            other.TermEquals(s, this)
             ? s.Affirm(other, this, out result)
             : s.TryExtend(other, this, out result);
 
@@ -67,7 +67,7 @@ namespace DunKanren
         public virtual bool TryUnifyWith<T>(State s, IUnifiable<T> other, out State result) where T : Term => s.Reject(other.Identity, this, out result);
 
         public virtual bool TryUnifyWith<T>(State s, Variable<T> other, out State result) where T : Term =>
-            other.SameAs(s, this)
+            other.TermEquals(s, this)
             ? s.Affirm(other, this, out result)
             : s.TryExtend(other, this, out result);
 

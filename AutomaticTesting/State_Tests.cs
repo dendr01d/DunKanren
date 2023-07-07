@@ -15,7 +15,6 @@ namespace AutomaticTesting
             State s = State.InitialState();
 
             Assert.AreEqual(s.Subs.Any(), false);
-            Assert.AreEqual(s.Negs.Any(), false);
             Assert.AreEqual(s.RecursionLevel, 0);
             Assert.AreEqual(s.VariableCounter, 0);
         }
@@ -34,9 +33,6 @@ namespace AutomaticTesting
 
             Assert.AreNotSame(s.Subs, s2.Subs);
             CollectionAssert.AreEqual(s.Subs, s2.Subs);
-
-            Assert.AreNotSame(s.Negs, s2.Negs);
-            CollectionAssert.AreEqual(s.Negs, s2.Negs);
         }
 
         [TestMethod]
@@ -55,11 +51,11 @@ namespace AutomaticTesting
 
             Variable[] newVars = s.DeclareVars(out s, "test1", "test2", "test3");
 
-            CollectionAssert.AreEquivalent(newVars, s.Subs.Keys);
+            CollectionAssert.AreEquivalent(newVars, s.Subs.Keys.ToArray());
 
             foreach(Variable var in newVars)
             {
-                Assert.AreEqual(var, s.Subs[var]);
+                Assert.AreEqual(true, s.Subs[var] is Instance.Indefinite);
             }
 
             Assert.AreEqual(3, s.VariableCounter);
@@ -126,7 +122,13 @@ namespace AutomaticTesting
             CollectionAssert.AreEquivalent(s.Subs, s2.Subs);
 
             Console.WriteLine($"Adding constraints on {altVars[2]}:");
-            s2.Negs.Add(altVars[2], new HashSet<Term>() { altVars[0], altVars[1] });
+            Instance.Indefinite indef = s2.Subs[altVars[2]] as Instance.Indefinite;
+            s2.Subs = s2.Subs
+                .Remove(altVars[2])
+                .Add(altVars[2], indef
+                    .AddRestriction(x => !x.TermEquals(s2, altVars[0]))
+                    .AddRestriction(x => !x.TermEquals(s2, altVars[1])));
+            //s2.Negs.Add(altVars[2], new HashSet<Term>() { altVars[0], altVars[1] });
             Console.WriteLine(s2);
 
             Console.WriteLine($"Extending {altVars[2]} with {altVars[0]} in new state:");
@@ -187,8 +189,8 @@ namespace AutomaticTesting
 
             bool succ2 = s.TryDisUnify(x, six, out s);
             Assert.AreEqual(true, succ2);
-            Assert.AreEqual(true, s.Negs.ContainsKey(x));
-            Assert.AreEqual(true, s.Negs[x].Contains(six));
+            //Assert.AreEqual(true, s.Negs.ContainsKey(x));
+            //Assert.AreEqual(true, s.Negs[x].Contains(six));
 
             bool succ3 = s.TryUnify(x, six, out s);
             Assert.AreEqual(false, succ3);
