@@ -4,182 +4,6 @@ namespace DunKanren
 {
     internal class Program
     {
-        static Goal Conso(Term car, Term cdr, Term cons)
-        {
-            return new Conj()
-            {
-                Cons.Truct(car, cdr) == cons,
-                //(cons is Cons ? new Top() : new Bottom()),
-                //((cons as Cons)?.Car ?? Term.NIL) == car,
-                //((cons as Cons)?.Cdr ?? Term.NIL) == cdr,
-            };
-        }
-
-        static Goal Appendo(Term a, Term b, Term c)
-        {
-            return new Disj()
-            {
-                new Conj()
-                {
-                    a == Term.NIL,
-                    b == c
-                },
-                new Conj()
-                {
-                    c != Term.NIL,
-                    new CallFresh((first, aRest, cRest) => new Conj()
-                    {
-                        Cons.Truct(first, aRest) == a,
-                        Cons.Truct(first, cRest) == c,
-                        Appendo(aRest, b, cRest)
-                    })
-                }
-            };
-        }
-
-        static Goal Membero(Term a, Term coll)
-        {
-            return new CallFresh((first, rest) => new Conj()
-            {
-                Conso(first, rest, coll),
-                new Disj()
-                {
-                    Membero(a, rest),
-                    a == first,
-                }
-            });
-        }
-
-        static Goal NotMembero(Term a, Term coll)
-        {
-            return new Disj()
-            {
-                coll == Term.NIL,
-                new CallFresh((first, rest) => new Conj()
-                {
-                    Conso(first, rest, coll),
-                    first != a,
-                    NotMembero(a, rest)
-                })
-            };
-        }
-
-        static Goal Removeo(Term r, Term collFull, Term collPrun)
-        {
-            return new Disj()
-            {
-                Goal.AND(collFull == Term.NIL, collPrun == Term.NIL),
-                new CallFresh((firstF, restF, firstP, restP) => new Conj()
-                {
-                    Conso(firstF, restF, collFull),
-                    Conso(firstP, restP, collPrun),
-                    r != firstP,
-                    new DNF()
-                    {
-                        { r == firstF, Removeo(r, restF, collPrun) },
-                        { firstF == firstP, Removeo(r, restF, restP) }
-                    }
-                })
-            };
-        }
-
-        static Goal Distincto(Term coll)
-        {
-            return new Disj()
-            {
-                coll == Term.NIL,
-                new CallFresh((first, rest) => new Conj()
-                {
-                    Conso(first, rest, coll),
-                    NotMembero(first, rest),
-                    Distincto(rest)
-                })
-            };
-        }
-
-        static Goal Sharedo(Term collA, Term collB)
-        {
-            return new Disj()
-            {
-                collA == collB,
-                new CallFresh((firstA, restA, firstB, restB) => new Conj()
-                {
-                    Conso(firstA, restA, collA),
-                    Conso(firstB, restB, collB),
-                    new Disj()
-                    {
-                        firstA == firstB,
-                        new Conj()
-                        {
-                            Membero(firstA, restB),
-                            Membero(firstB, restA)
-                        }
-                    },
-                    Sharedo(restA, restB)
-                })
-            };
-        }
-
-        static Goal Bijecto(Term collA, Term collB)
-        {
-            Goal helper(Term _collA, Term _collB)
-            {
-                return new Disj()
-                {
-                    _collA == _collB,
-                    new CallFresh((firstA, restA, firstB, restB) => new Conj()
-                    {
-                        Conso(firstA, restA, _collA),
-                        Conso(firstB, restB, _collB),
-                        new Disj()
-                        {
-                            firstA == firstB,
-                            new Conj()
-                            {
-                                firstA != firstB,
-                                Membero(firstA, collB),
-                                Membero(firstB, collA)
-                            }
-                        },
-                        helper(restA, restB)
-                    })
-                };
-            }
-
-            return new Conj()
-            {
-                Distincto(collA),
-                Distincto(collB),
-                helper(collA, collB)
-            };
-        }
-
-        // h e l l o 'n
-        // o l l e h 'n
-
-        static Goal Reverseo(Term collA, Term collB)
-        {
-            static Goal helper(Term coll_a, Term coll_b, Term mem)
-            {
-                return new Disj()
-                {
-                    new Conj()
-                    {
-                        coll_a == Term.NIL,
-                        coll_b == mem
-                    },
-                    new CallFresh((firstA, restA, newMem) => new Conj()
-                    {
-                        Conso(firstA, restA, coll_a),
-                        newMem == Cons.Truct(firstA, mem),
-                        helper(restA, coll_b, newMem)
-                    })
-                };
-            }
-
-            return helper(collA, collB, Term.NIL);
-        }
-
         static Goal Puzzle()
         {
             return new CallFresh((Aramis, Athos, Pathos, Constance) =>
@@ -202,17 +26,17 @@ namespace DunKanren
 
                         new Conj()
                         {
-                            Membero(Aramis_P, Cons.Truct(hotel, jardin, estate)),
-                            Membero(Athos_P, Cons.Truct(hotel, jardin, estate)),
-                            Membero(Pathos_P, Cons.Truct(hotel, jardin, estate)),
-                            Membero(Constance_P, Cons.Truct(hotel, jardin, estate))
+                            StdGoals.Membero(Aramis_P, Cons.Truct(hotel, jardin, estate)),
+                            StdGoals.Membero(Athos_P, Cons.Truct(hotel, jardin, estate)),
+                            StdGoals.Membero(Pathos_P, Cons.Truct(hotel, jardin, estate)),
+                            StdGoals.Membero(Constance_P, Cons.Truct(hotel, jardin, estate))
                         },
 
                         new Conj()
                         {
-                            Membero(Aramis_A, Cons.Truct(musket, duel, rendM)),
-                            Membero(Athos_A, Cons.Truct(musket, duel, rendM)),
-                            Membero(Pathos_A, Cons.Truct(musket, duel, rendM)),
+                            StdGoals.Membero(Aramis_A, Cons.Truct(musket, duel, rendM)),
+                            StdGoals.Membero(Athos_A, Cons.Truct(musket, duel, rendM)),
+                            StdGoals.Membero(Pathos_A, Cons.Truct(musket, duel, rendM)),
                             Constance_A == rendF
                         },
 
@@ -366,80 +190,80 @@ namespace DunKanren
 
 
         //https://leanprover.github.io/logic_and_proof/propositional_logic.html
-        public static Goal MurderPuzzle()
-        {
+        //public static Goal MurderPuzzle()
+        //{
 
-            return
-                new CallFresh((Alice, Husband, Brother, Son, Daughter) =>
-                new CallFresh((BarMan, BarWoman, Killer, Victim, Loner) =>
-                new Conj()
-            {
-                    BarMan == ValueFactory.Sym("Man at the bar"),
-                    BarWoman == ValueFactory.Sym("Woman at the bar"),
-                    Killer == ValueFactory.Sym("Killer at the beach"),
-                    Victim == ValueFactory.Sym("Victim at the beach"),
-                    Loner == ValueFactory.Sym("Bystander elsewhere"),
+        //    return
+        //        new CallFresh((Alice, Husband, Brother, Son, Daughter) =>
+        //        new CallFresh((BarMan, BarWoman, Killer, Victim, Loner) =>
+        //        new Conj()
+        //    {
+        //            BarMan == ValueFactory.Sym("Man at the bar"),
+        //            BarWoman == ValueFactory.Sym("Woman at the bar"),
+        //            Killer == ValueFactory.Sym("Killer at the beach"),
+        //            Victim == ValueFactory.Sym("Victim at the beach"),
+        //            Loner == ValueFactory.Sym("Bystander elsewhere"),
 
-                    Membero(Alice, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
-                    Membero(Husband, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
-                    Membero(Brother, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
-                    Membero(Son, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
-                    Membero(Daughter, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
+        //            Membero(Alice, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
+        //            Membero(Husband, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
+        //            Membero(Brother, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
+        //            Membero(Son, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
+        //            Membero(Daughter, Cons.Truct(BarMan, BarWoman, Killer, Victim, Loner)),
 
-                    new Conj()
-                    {
-                        Alice != Husband, Alice != Brother, Alice != Son, Alice != Daughter,
-                        Husband != Brother, Husband != Son, Husband != Daughter,
-                        Brother != Son, Brother != Daughter,
-                        Son != Daughter,
-                    },
+        //            new Conj()
+        //            {
+        //                Alice != Husband, Alice != Brother, Alice != Son, Alice != Daughter,
+        //                Husband != Brother, Husband != Son, Husband != Daughter,
+        //                Brother != Son, Brother != Daughter,
+        //                Son != Daughter,
+        //            },
 
-                    //setup complete?
+        //            //setup complete?
 
-                    Membero(BarMan, Cons.Truct(Husband, Brother, Son)),
-                    Membero(BarWoman, Cons.Truct(Alice, Daughter)),
+        //            Membero(BarMan, Cons.Truct(Husband, Brother, Son)),
+        //            Membero(BarWoman, Cons.Truct(Alice, Daughter)),
 
-                    new XOR()
-                    {
-                        Loner == Son,
-                        Loner == Daughter
-                    },
+        //            new XOR()
+        //            {
+        //                Loner == Son,
+        //                Loner == Daughter
+        //            },
 
-                    new BImp(Alice == BarWoman, new Disj(Husband == Victim, Husband == Killer)),
-                    new BImp(Husband == BarMan, new Disj(Alice == Victim, Alice == Killer)),
+        //            new BImp(Alice == BarWoman, new Disj(Husband == Victim, Husband == Killer)),
+        //            new BImp(Husband == BarMan, new Disj(Alice == Victim, Alice == Killer)),
 
-                    Husband != Victim, //the victim's twin must be amongst the 5 people, but the husband can't have one
-                    new Disj(Son != Killer, Daughter != Victim),
-                    new Disj(Son != Victim, Daughter != Killer),
-                    new Disj(Alice != Killer, Brother != Victim),
-                    new Disj(Alice != Victim, Brother != Killer),
+        //            Husband != Victim, //the victim's twin must be amongst the 5 people, but the husband can't have one
+        //            new Disj(Son != Killer, Daughter != Victim),
+        //            new Disj(Son != Victim, Daughter != Killer),
+        //            new Disj(Alice != Killer, Brother != Victim),
+        //            new Disj(Alice != Victim, Brother != Killer),
 
-                    //new Disj()
-                    //{
-                    //    new Impl(Alice == Victim, Brother != Killer),
-                    //    new Impl(Brother == Victim, Alice != Killer),
-                    //    new Impl(Son == Victim, Daughter != Killer),
-                    //    new Impl(Daughter == Victim, Son != Killer),
-                    //},
+        //            //new Disj()
+        //            //{
+        //            //    new Impl(Alice == Victim, Brother != Killer),
+        //            //    new Impl(Brother == Victim, Alice != Killer),
+        //            //    new Impl(Son == Victim, Daughter != Killer),
+        //            //    new Impl(Daughter == Victim, Son != Killer),
+        //            //},
 
-                    new Impl(Son == Victim, new Conj(Alice != Killer, Husband != Killer)),
-                    new Impl(Daughter == Victim, new Conj(Alice != Killer, Husband != Killer)),
-                    //new Impl(Alice == Victim, new Disj(Son == Killer, Daughter == Killer)),
-                    //new Impl(Husband == Victim, new Disj(Son == Killer, Daughter == Killer)),
+        //            new Impl(Son == Victim, new Conj(Alice != Killer, Husband != Killer)),
+        //            new Impl(Daughter == Victim, new Conj(Alice != Killer, Husband != Killer)),
+        //            //new Impl(Alice == Victim, new Disj(Son == Killer, Daughter == Killer)),
+        //            //new Impl(Husband == Victim, new Disj(Son == Killer, Daughter == Killer)),
 
-                    //new XOR(Alice == BarMan, Alice == BarWoman, Alice == Killer, Alice == Victim, Alice == Loner),
-                    //new XOR(Husband == BarMan, Husband == BarWoman, Husband == Killer, Husband == Victim, Husband == Loner),
-                    //new XOR(Brother == BarMan, Brother == BarWoman, Brother == Killer, Brother == Victim, Brother == Loner),
-                    //new XOR(Son == BarMan, Son == BarWoman, Son == Killer, Son == Victim, Son == Loner),
-                    //new XOR(Daughter == BarMan, Daughter == BarWoman, Daughter == Killer, Daughter == Victim, Daughter == Loner),
+        //            //new XOR(Alice == BarMan, Alice == BarWoman, Alice == Killer, Alice == Victim, Alice == Loner),
+        //            //new XOR(Husband == BarMan, Husband == BarWoman, Husband == Killer, Husband == Victim, Husband == Loner),
+        //            //new XOR(Brother == BarMan, Brother == BarWoman, Brother == Killer, Brother == Victim, Brother == Loner),
+        //            //new XOR(Son == BarMan, Son == BarWoman, Son == Killer, Son == Victim, Son == Loner),
+        //            //new XOR(Daughter == BarMan, Daughter == BarWoman, Daughter == Killer, Daughter == Victim, Daughter == Loner),
 
 
-            }));
-        }
+        //    }));
+        //}
 
         static void Main()
         {
-            Goal g = MurderPuzzle();
+            Goal g = Puzzle();
 
             //Goal g = new CallFresh((x, y) => new Conj(x == 5, y == 6));
 

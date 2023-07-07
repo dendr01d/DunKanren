@@ -107,7 +107,10 @@ namespace DunKanren
 
         public Term? LookupBySymbol(string symbol)
         {
-            return this.Subs.Where(x => x.Key.Symbol == symbol).FirstOrDefault().Value;
+            return Subs.Where(x => x.Key.Symbol == symbol).FirstOrDefault() is var pair
+                && pair.Value is Instance.Definite def
+                ? def.Definition
+                : null;
         }
 
         public bool TryUnify(Term u, Term v, out State result)
@@ -118,6 +121,13 @@ namespace DunKanren
 
             if (!alpha.TermEquals(this, u) || !beta.TermEquals(this, v)) IO.Debug_Print("===> " + alpha.ToString() + " EQ? " + beta.ToString());
 
+            if (alpha is Cons alphaCons && beta is Cons betaCons)
+            {
+                if (TryUnify(alphaCons.Car, betaCons.Car, out State temp))
+                {
+                    return temp.TryUnify(alphaCons.Cdr, betaCons.Cdr, out result);
+                }
+            }
             if (alpha is Variable alphaVar)
             {
                 return TryExtend(alphaVar, beta, out result);
@@ -126,11 +136,9 @@ namespace DunKanren
             {
                 return TryExtend(betaVar, alpha, out result);
             }
-            else
-            {
-                result = this;
-                return alpha.TermEquals(this, beta);
-            }
+
+            result = this;
+            return alpha.TermEquals(this, beta);
         }
 
         private bool TryExtend(Variable v, Term t, out State result)

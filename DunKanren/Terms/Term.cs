@@ -61,7 +61,7 @@ namespace DunKanren
 
         #region Implicit Conversions
 
-        public static implicit operator Term(int i) => new Number(i);
+        public static implicit operator Term(int i) => ValueFactory.Box(i);
         public static implicit operator Term(double d) => new Number(d);
         public static implicit operator Term((int, int) ii) => new Number(ii.Item1, ii.Item2);
 
