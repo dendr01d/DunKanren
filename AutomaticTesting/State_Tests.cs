@@ -23,15 +23,18 @@ namespace AutomaticTesting
         public void Test_Dupe()
         {
             State s = State.InitialState();
+            (s, _) = s.DeclareVar("test");
             State s2 = s.Dupe();
-            s.DeclareVar("test");
 
             Assert.AreNotSame(s, s2);
 
             Assert.AreEqual(s.RecursionLevel, s2.RecursionLevel);
-            Assert.AreEqual(0, s.VariableCounter);
+            Assert.AreEqual(1, s.VariableCounter);
             Assert.AreEqual(s.VariableCounter, s2.VariableCounter);
 
+            //apparently a quirk of immutabledictionaries is that depending on how you construct them
+            // -- if they have the same contents -- then they end up sharing a reference
+            //even though they're not supposed to...?
             Assert.AreNotSame(s.Subs, s2.Subs);
             CollectionAssert.AreEqual(s.Subs, s2.Subs);
         }
