@@ -1,9 +1,11 @@
-﻿using System.Linq;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace DunKanren
 {
-    public abstract class Cons : Term
+    public abstract class Cons : Term, IEnumerable<Term>
     {
         public abstract Term Car { get; }
         public abstract Term Cdr { get; }
@@ -36,26 +38,31 @@ namespace DunKanren
             }
         }
 
+        protected virtual IEnumerable<Term> Enumerate()
+        {
+            yield return Car;
+            yield return Cdr;
+        }
+
+        public IEnumerator<Term> GetEnumerator() => Enumerate().GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
         #region Static Constructors
 
         public static Cons Truct<T1, T2>(T1 car, T2 cdr)
             where T1 : Term
             where T2 : Term
         {
-            //return (car, cdr) switch
-            //{
-            //    (Value<char> newCar, Nil) => new Seq<Value<char>>.ConsString(newCar),
-            //    (Value<char> newCar, Value<char> newCdr) => new Seq<Value<char>>.List(newCar, new Seq<Value<char>>.List(newCdr)),
-            //    (Value<char> newCar, Seq<Value<char>> newCdr) => new Seq<Value<char>>.List(newCar, newCdr),
-
-            //    (T1, Nil) => new Seq<T1>.List(car),
-            //    (T1, T1 newCdr) => new Seq<T1>.List(car, new Seq<T1>.List(newCdr)),
-            //    (T1, Seq<T1> newCdr) => new Seq<T1>.List(car, newCdr),
-
-            //    (_, _) => new Cell<T1, T2>.Pair(car, cdr)
-            //};
 
             return new Cell<T1, T2>.Pair(car, cdr);
+        }
+
+        public static Seq<T>.List Truct<T>(T car, params T[] tail)
+            where T : Term
+        {
+            return tail.Any()
+                ? new Seq<T>.List(car, Truct(tail[0], tail[1..]))
+                : new Seq<T>.List(car);
         }
 
         public static Seq<Value<char>>.ConsString Truct(string s)
@@ -97,6 +104,15 @@ namespace DunKanren
             public override Term Cdr => _cdr.GetValue();
             protected Seq(L car, Seq<L> cdr) : base(car, new MaybeNil<Seq<L>>(cdr)) { }
             protected Seq(L car) : base(car, new MaybeNil<Seq<L>>()) { }
+
+            protected override IEnumerable<L> Enumerate()
+            {
+                yield return Car;
+                if (!_cdr.IsNil && Cdr is Seq<L> seq)
+                {
+                    seq.Enumerate();
+                }
+            }
 
             // ---------------
 

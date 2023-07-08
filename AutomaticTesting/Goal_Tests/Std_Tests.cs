@@ -51,5 +51,26 @@
         }
 
 
+        [TestMethod]
+        public void Test_Membero()
+        {
+            Term a = 'a';
+            Term b = 'b';
+            Term c = 'c';
+
+            Cons list = Cons.Truct(a, b, c);
+
+            Goal g = new CallFresh(x => StdGoals.Membero(x, list));
+
+            Stream str = g.Pursue();
+            Assert.AreEqual(true, str.Any());
+            Assert.AreEqual(3, str.Count());
+
+            //assert that each of a, b, and c could be answers to the query posed
+            foreach(Term t in list)
+            {
+                Assert.AreEqual(true, str.Any(x => x.LookupBySymbol("x")?.TermEquals(x, t) ?? false));
+            }
+        }
     }
 }

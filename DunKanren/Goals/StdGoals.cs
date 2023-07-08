@@ -13,12 +13,6 @@ namespace DunKanren.Goals
             return statement ? new Top() : new Bottom();
         }
 
-        public static Goal TypeCheck<T>(Term t)
-            where T : Term
-        {
-            return new Typed<T>(t);
-        }
-
         public static Goal Conso(Term car, Term cdr, Term cons)
         {
             return new Conj()
