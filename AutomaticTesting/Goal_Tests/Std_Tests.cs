@@ -114,7 +114,59 @@
             Assert.AreEqual(true, str2.Any());
             Assert.AreEqual(1, str2.Count());
             State solution = str2.First();
-            Assert.AreEqual(true, solution.LookupBySymbol("x").TermEquals(solution, d));
+            Assert.AreEqual(true, solution.LookupBySymbol("x")?.TermEquals(solution, d) ?? false);
+        }
+
+        [TestMethod]
+        public void Test_Removeo()
+        {
+            string with = "D6u66nca666n";
+            string without = with.Replace("6", String.Empty);
+
+            Cons stringWith = Cons.Truct(with);
+            Cons stringWithout = Cons.Truct(without);
+            Term removeTerm = '6';
+
+            Goal g1 = new CallFresh(x => StdGoals.Removeo(removeTerm, stringWith, x));
+
+            Stream str1 = g1.Pursue();
+            Assert.AreEqual(true, str1.Any());
+            Assert.AreEqual(1, str1.Count());
+            State sol1 = str1.First();
+            Assert.AreEqual(true, sol1.LookupBySymbol("x")?.TermEquals(sol1, stringWithout) ?? false);
+
+            Goal g2 = new CallFresh(x => StdGoals.Removeo(x, stringWith, stringWithout));
+
+            Stream str2 = g2.Pursue();
+            Assert.AreEqual(true, str2.Any());
+            Assert.AreEqual(1, str2.Count());
+            State sol2 = str2.First();
+            Assert.AreEqual(true, sol2.LookupBySymbol("x")?.TermEquals(sol2, removeTerm) ?? false);
+        }
+
+        [TestMethod]
+        public void Test_Distincto()
+        {
+            Term one = '1';
+            Term two = '2';
+            Term three = '3';
+            Term four = '4';
+
+            Goal g = new CallFresh(x => new Conj()
+            {
+                new Disj()
+                {
+                    x == two,
+                    x == three
+                },
+                StdGoals.Distincto(Cons.Truct(one, two, x, four))
+            });
+
+            Stream str = g.Pursue();
+            Assert.AreEqual(true, str.Any());
+            Assert.AreEqual(1, str.Count());
+            State solution = str.First();
+            Assert.AreEqual(true, solution.LookupBySymbol("x")?.TermEquals(solution, three) ?? false);
         }
     }
 }

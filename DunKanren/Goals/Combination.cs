@@ -44,14 +44,14 @@ namespace DunKanren.Goals
         {
             return this.Subs.Count() > 1
             ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetApp().Value).Aggregate(Conjunction<T>.Aggregate)(s))
-            : new(() => (State s) => this.Subs.First().GetApp().Value(s));
+            : new(() => (State s) => this.Subs.FirstOrDefault()?.GetApp().Value(s) ?? Stream.Empty());
         }
 
         internal override Lazy<Func<State, Stream>> GetNeg()
         {
             return this.Subs.Count() > 1
             ? new(() => (State s) => this.Subs.OrderBy(x => x.Ungroundedness).Select(x => x.GetNeg().Value).Aggregate(Disjunction<T>.Aggregate)(s))
-            : new(() => (State s) => this.Subs.First().GetNeg().Value(s));
+            : new(() => (State s) => this.Subs.FirstOrDefault()?.GetNeg().Value(s) ?? Stream.Empty());
         }
 
         public static Func<State, Stream> Aggregate(Func<State, Stream> g1, Func<State, Stream> g2)
