@@ -108,11 +108,11 @@ namespace DunKanren
 
         public bool TryUnify(Term u, Term v, out State result)
         {
-            IO.Debug_Print(u.ToString() + " EQ? " + v.ToString());
+            IO.Debug_Print($"Can we unite '{u}' <-> '{v}'?");
             Term alpha = this.Walk(u);
             Term beta = this.Walk(v);
 
-            if (!alpha.TermEquals(this, u) || !beta.TermEquals(this, v)) IO.Debug_Print("===> " + alpha.ToString() + " EQ? " + beta.ToString());
+            if (!alpha.TermEquals(this, u) || !beta.TermEquals(this, v)) IO.Debug_Print($"\ti.e. '{alpha}' <-> '{beta}'");
 
             if (alpha is Cons alphaCons && beta is Cons betaCons)
             {
@@ -131,7 +131,16 @@ namespace DunKanren
             }
 
             result = this;
-            return alpha.TermEquals(this, beta);
+            if (alpha.TermEquals(this, beta))
+            {
+                IO.Debug_Print($"'{alpha}' and '{beta}' are the same, so unification is unnecessary");
+                return true;
+            }
+            else
+            {
+                IO.Debug_Print($"'{alpha}' and '{beta}' are different values, so they can never unify");
+                return false;
+            }
         }
 
         private bool TryExtend(Variable v, Term t, out State result)
@@ -144,15 +153,17 @@ namespace DunKanren
                 {
                     //if the variable is already defined,
                     //fail, unless the definitions happen to be equal
+                    IO.Debug_Print($"'{v}' is already defined as '{def.Definition}'");
+
                     result = this;
                     if(def.Definition.TermEquals(this, t))
                     {
-                        IO.Debug_Print(v.ToString() + " EQL " + t.ToString() + " in " + result.ToString());
+                        IO.Debug_Print($"\tand '{def.Definition}' and '{t}' CAN unite in {result}");
                         return true;
                     }
                     else
                     {
-                        IO.Debug_Print(v.ToString() + " NEQ " + t.ToString() + " in " + result.ToString());
+                        IO.Debug_Print($"\tbut '{def.Definition}' and '{t}' DO NOT unite in {result}");
                         return false;
                     }
                 }
@@ -164,13 +175,13 @@ namespace DunKanren
                     {
                         result = new(this, false);
                         result.Subs = result.Subs.Remove(v).Add(v, indef.BindTo(t));
-                        IO.Debug_Print(v.ToString() + " DEF " + t.ToString() + " in " + result.ToString());
+                        IO.Debug_Print($"'{v}' and '{t}' successfully unite in {result}");
                         return true;
                     }
                     else
                     {
                         result = this;
-                        IO.Debug_Print(v.ToString() + " NEV " + t.ToString() + " in " + result.ToString());
+                        IO.Debug_Print($"'{v}' and '{t}' NEVER unite in {result}");
                         return false;
                     }
                 }
@@ -193,21 +204,34 @@ namespace DunKanren
             //hypothetical unification succeeds without extension -> terms already equal, disunification fails
             //hypothetical unification succeeds, but requires extension -> terms may or may not be equal, must be constrained
 
-            IO.Debug_Print(u.ToString() + " NQ? " + v.ToString());
+            IO.Debug_Print($"Can we constrain '{u}' != '{v}'?");
+            Term alpha = this.Walk(u);
+            Term beta = this.Walk(v);
+
+            if (!alpha.TermEquals(this, u) || !beta.TermEquals(this, v)) IO.Debug_Print($"\ti.e. '{alpha}' != '{beta}'");
 
             //unification is only possible to start with if one of these terms is a variable
-            if (u is Variable uV)
+            if (alpha is Variable alphaVar)
             {
-                return TryConstrain(uV, x => !x.TermEquals(this, v), out result);
+                return TryConstrain(alphaVar, x => !x.TermEquals(this, beta), out result);
             }
-            else if (v is Variable vV)
+            else if (beta is Variable betaVar)
             {
-                return TryConstrain(vV, x => !x.TermEquals(this, u), out result);
+                return TryConstrain(betaVar, x => !x.TermEquals(this, alpha), out result);
             }
 
             //we're looking at two concrete terms then, so it comes down to whether they're equal or not
             result = this;
-            return !u.TermEquals(this, v);
+            if(!alpha.TermEquals(this, beta))
+            {
+                IO.Debug_Print($"'{alpha}' and '{beta}' are already different, so no constraint is necessary");
+                return true;
+            }
+            else
+            {
+                IO.Debug_Print($"'{alpha}' and '{beta}' are the same, so the constraint is impossible");
+                return false;
+            }
         }
 
         public bool TryConstrainType<T>(Term t, out State result)
@@ -249,14 +273,25 @@ namespace DunKanren
                 if (inst is Instance.Definite def)
                 {
                     //if the variable is already bound to a term, check to see if that term passes the test
+                    IO.Debug_Print($"'{v}' is already defined as '{def.Definition}'");
                     result = this;
-                    return pred(def.Definition);
+                    if(pred(def.Definition))
+                    {
+                        IO.Debug_Print($"\tand '{def.Definition}' complies with the constraint");
+                        return true;
+                    }
+                    else
+                    {
+                        IO.Debug_Print($"\tbut '{def.Definition}' VIOLATES the constraint");
+                        return false;
+                    }
                 }
                 else if (inst is Instance.Indefinite indef)
                 {
                     //otherwise add the new constraint to the list
                     result = new(this, false);
                     result.Subs = result.Subs.Remove(v).Add(v, indef.AddRestriction(pred));
+                    IO.Debug_Print($"'{v}' is successfully bound by the new constraint");
                     return true;
                 }
             }

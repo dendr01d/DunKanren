@@ -67,10 +67,54 @@
             Assert.AreEqual(3, str.Count());
 
             //assert that each of a, b, and c could be answers to the query posed
-            foreach(Term t in list)
+            foreach (Term t in list)
             {
                 Assert.AreEqual(true, str.Any(x => x.LookupBySymbol("x")?.TermEquals(x, t) ?? false));
             }
+        }
+
+
+        [TestMethod]
+        public void Test_NotMembero()
+        {
+            Term a = 'a';
+            Term b = 'b';
+            Term c = 'c';
+
+            Cons trio = Cons.Truct(a, b, c);
+
+            Goal g = new CallFresh(x => new Conj() {
+                new Disj()
+                {
+                    x == a,
+                    x == b,
+                    x == c
+                },
+                StdGoals.NotMembero(x, trio)
+            });
+
+            Stream str = g.Pursue();
+            Assert.AreEqual(false, str.Any());
+
+            Term d = 'd';
+
+            Goal g2 = new CallFresh(x => new Conj()
+            {
+                new Disj()
+                {
+                    x == a,
+                    x == b,
+                    x == c,
+                    x == d
+                },
+                StdGoals.NotMembero(x, trio)
+            });
+
+            Stream str2 = g2.Pursue();
+            Assert.AreEqual(true, str2.Any());
+            Assert.AreEqual(1, str2.Count());
+            State solution = str2.First();
+            Assert.AreEqual(true, solution.LookupBySymbol("x").TermEquals(solution, d));
         }
     }
 }

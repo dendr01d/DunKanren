@@ -64,6 +64,7 @@ namespace DunKanren.Goals
                 {
                     Conso(first, rest, coll),
                     first != a,
+                    a != coll,
                     NotMembero(a, rest)
                 })
             };
