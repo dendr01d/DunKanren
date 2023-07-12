@@ -10,11 +10,8 @@ namespace DunKanren
         public abstract Term Car { get; }
         public abstract Term Cdr { get; }
         public override uint Ungroundedness => Car.Ungroundedness + Cdr.Ungroundedness;
-        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
-        public override bool TermEquals(State s, Cons other)
-        {
-            return this.Car.TermEquals(s, other.Car) && this.Cdr.TermEquals(s, other.Cdr);
-        }
+        public override bool Equals(Term? other) => other is Cons t && t.Car.Equals(Car) && t.Cdr.Equals(Cdr);
+        public override Term Reify(State s) => Truct(s.Walk(Car), s.Walk(Cdr));
 
         private static bool IsList<T>(Cons c)
             where T : Term
@@ -27,6 +24,10 @@ namespace DunKanren
             if (IsList<Value<char>>(this))
             {
                 return $"{Car}{Cdr}";
+            }
+            else if (IsList<Nil>(this))
+            {
+                return Seq<Nil>.Peano.ToInt(this).ToString();
             }
             else if (Cdr is not Cons and not Nil)
             {
@@ -63,6 +64,13 @@ namespace DunKanren
             return tail.Any()
                 ? new Seq<T>.List(car, Truct(tail[0], tail[1..]))
                 : new Seq<T>.List(car);
+        }
+
+        public static Seq<Nil>.Peano Truct(uint value)
+        {
+            return value > 0
+                ? new Seq<Nil>.Peano(NIL, Truct(value - 1))
+                : new Seq<Nil>.Peano(NIL);
         }
 
         public static Seq<Value<char>>.ConsString Truct(string s)
@@ -126,6 +134,19 @@ namespace DunKanren
             {
                 public ConsString(Value<char> car, Seq<Value<char>> cdr) : base(car, cdr) { }
                 public ConsString(Value<char> car) : base(car) { }
+            }
+
+            public sealed class Peano : Seq<Nil>
+            {
+                public Peano(Nil car, Peano cdr) : base(car, cdr) { }
+                public Peano(Nil car) : base(car) { }
+
+                public static uint ToInt(Cons p)
+                {
+                    return p.Cdr is Cons p2
+                        ? 1 + ToInt(p2)
+                        : 0;
+                }
             }
         }
     }

@@ -15,10 +15,9 @@ namespace DunKanren.Goals
 
         public static Goal Conso(Term car, Term cdr, Term cons)
         {
-            return new Conj()
-            {
-                Cons.Truct(car, cdr) == cons
-            };
+            return cdr is Nil
+                ? car == cons
+                : Cons.Truct(car, cdr) == cons;
         }
 
         public static Goal Appendo(Term a, Term b, Term c)
@@ -50,7 +49,7 @@ namespace DunKanren.Goals
                 new Disj()
                 {
                     Membero(a, rest),
-                    a == first,
+                    a == first
                 }
             });
         }
@@ -70,26 +69,26 @@ namespace DunKanren.Goals
             };
         }
 
-        static Goal Removeo(Term r, Term collFull, Term collPrun)
+        public static Goal Removeo(Term r, Term collWith, Term collWithout)
         {
             return new Disj()
             {
-                Goal.AND(collFull == Term.NIL, collPrun == Term.NIL),
-                new CallFresh((firstF, restF, firstP, restP) => new Conj()
+                Goal.AND(collWith == Term.NIL, collWithout == Term.NIL),
+                new CallFresh((firstWith, restWith, firstWithout, restWithout) => new Conj()
                 {
-                    Conso(firstF, restF, collFull),
-                    Conso(firstP, restP, collPrun),
-                    r != firstP,
+                    Conso(firstWith, restWith, collWith),
+                    Conso(firstWithout, restWithout, collWithout),
+                    r != firstWithout,
                     new DNF()
                     {
-                        { r == firstF, Removeo(r, restF, collPrun) },
-                        { firstF == firstP, Removeo(r, restF, restP) }
+                        { r == firstWith, Removeo(r, restWith, collWithout) },
+                        { firstWith == firstWithout, Removeo(r, restWith, restWithout) }
                     }
                 })
             };
         }
 
-        static Goal Distincto(Term coll)
+        public static Goal Distincto(Term coll)
         {
             return new Disj()
             {
@@ -103,30 +102,79 @@ namespace DunKanren.Goals
             };
         }
 
-        static Goal Sharedo(Term collA, Term collB)
+        //static Goal Sharedo(Term collA, Term collB)
+        //{
+        //    return new Disj()
+        //    {
+        //        collA == collB,
+        //        new CallFresh((firstA, restA, firstB, restB) => new Conj()
+        //        {
+        //            Conso(firstA, restA, collA),
+        //            Conso(firstB, restB, collB),
+        //            new Disj()
+        //            {
+        //                firstA == firstB,
+        //                new Conj()
+        //                {
+        //                    Membero(firstA, restB),
+        //                    Membero(firstB, restA)
+        //                }
+        //            },
+        //            Sharedo(restA, restB)
+        //        })
+        //    };
+        //}
+
+        public static Goal Lengtho(Term coll, Term length)
         {
-            return new Disj()
+            Goal helper(Term _coll, Term _length, Term count)
             {
-                collA == collB,
-                new CallFresh((firstA, restA, firstB, restB) => new Conj()
+                return new Disj()
                 {
-                    Conso(firstA, restA, collA),
-                    Conso(firstB, restB, collB),
-                    new Disj()
+                    Goal.AND(_coll == Term.NIL, _length == count),
+                    new CallFresh((collFirst, collRest, inc) => new Conj()
                     {
-                        firstA == firstB,
-                        new Conj()
-                        {
-                            Membero(firstA, restB),
-                            Membero(firstB, restA)
-                        }
-                    },
-                    Sharedo(restA, restB)
-                })
+                        Conso(collFirst, collRest, _coll),
+                        Conso(Term.NIL, count, inc),
+                        helper(collRest, _length, inc)
+                    })
+                };
+            }
+
+            return helper(coll, length, Cons.Truct(0));
+        }
+
+        public static Goal Bijecto(Term collA, Term collB)
+        {
+            //there's a 1-to-1 correspondence between the two sets A and B if:
+            //A and B are the same length
+            //A's elements are distinct
+            //B's elements are distinct
+            //each of A's elements appears in B
+
+            Goal helper(Term _collA, Term _collB)
+            {
+                return new Disj()
+                {
+                    _collA == Term.NIL,
+                    new CallFresh((firstA, restA) => new Conj()
+                    {
+                        Conso(firstA, restA, _collA),
+                        Membero(firstA, collB),
+                        helper(restA, _collB)
+                    })
+                };
+            }
+
+            return new Conj()
+            {
+                Distincto(collA),
+                Distincto(collB),
+                helper(collA, collB)
             };
         }
 
-        static Goal Bijecto(Term collA, Term collB)
+        static Goal Bijecto_old(Term collA, Term collB)
         {
             Goal helper(Term _collA, Term _collB)
             {

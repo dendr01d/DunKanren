@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace DunKanren
 {
-    public abstract class Term : IPrintable, IGrounded
+    public abstract class Term : IPrintable, IGrounded, IEquatable<Term>
     {
         public static readonly Value<bool> True = new(true);
         public static readonly Value<bool> False = new(false);
@@ -20,20 +20,8 @@ namespace DunKanren
         public Term Identity => this;
 
         #region Equivalence
-        public abstract bool TermEquals(State s, Term other);
-
-        public virtual bool TermEquals(State s, Variable other) => false;
-        public virtual bool TermEquals<D>(State s, Value<D> other) => false;
-        public virtual bool TermEquals(State s, Number other) => false;
-        public virtual bool TermEquals(State s, Nil other) => false;
-        public virtual bool TermEquals(State s, Cons other) => false;
-        //public virtual bool SameAs<T>(State s, Cont<T> other) where T : Term => false;
-        //public virtual bool SameAs(State s, Seq other) => false;
-
-        //A term is concrete if it has a definite value regardless of contextual state.
-        //Variables are never concrete
-        //A cons is concrete if it contains no variables within its entire tree.
-        //Everything else is concrete.
+        public abstract bool Equals(Term? other);
+        public virtual Term Reify(State s) => this;
 
         public virtual uint Ungroundedness { get; } = 0;
         public int CompareTo(IGrounded? other) => this.Ungroundedness.CompareTo(other?.Ungroundedness ?? 0);
@@ -54,14 +42,11 @@ namespace DunKanren
         };
 
 
-        public override bool Equals(object? obj) => ReferenceEquals(obj, this);
-        public override int GetHashCode() => this.ToString().GetHashCode();
-
         #endregion
 
         #region Implicit Conversions
 
-        public static implicit operator Term(int i) => ValueFactory.Box(i);
+        public static implicit operator Term(int i) => i >= 0 ? Cons.Truct((uint)i) : ValueFactory.Box(i);
         public static implicit operator Term(double d) => new Number(d);
         public static implicit operator Term((int, int) ii) => new Number(ii.Item1, ii.Item2);
 
@@ -77,6 +62,12 @@ namespace DunKanren
         public static Goals.Goal operator ==(Term left, Term right) => new Goals.Equality(left, right);
         public static Goals.Goal operator !=(Term left, Term right) => new Goals.Disequality(left, right);
 
+
+        public override bool Equals(object? o) => ReferenceEquals(this, o);
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
         #endregion
     }
 

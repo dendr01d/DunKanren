@@ -98,8 +98,7 @@ namespace DunKanren
 
         //-------------------------
 
-        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
-        public override bool TermEquals(State s, Number other) => this.Numerator == other.Numerator && this.Denominator == other.Denominator;
+        public override bool Equals(Term? other) => other is Number t && t.AsDecimal == AsDecimal;
 
         public override string ToString()
         {

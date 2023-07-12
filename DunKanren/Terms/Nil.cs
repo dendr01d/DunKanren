@@ -4,8 +4,7 @@ namespace DunKanren
 {
     public class Nil : Term
     {
-        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
-        public override bool TermEquals(State s, Nil other) => true;
+        public override bool Equals(Term? other) => other is Nil;
 
         public override string ToString() => "ⁿ";
         public override string ToVerboseString() => "nil";
@@ -41,10 +40,7 @@ namespace DunKanren
 
         public override uint Ungroundedness => this.Deconstruct(r => r.Ungroundedness, n => n.Ungroundedness);
 
-        public override bool TermEquals(State s, Term other)
-        {
-            return this.Deconstruct(r => r.TermEquals(s, other), n => n.TermEquals(s, other));
-        }
+        public override bool Equals(Term? other) => GetValue().Equals(other);
 
         public override string ToString()
         {

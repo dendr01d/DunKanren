@@ -33,8 +33,8 @@ namespace DunKanren
 
         public override uint Ungroundedness => 1;
 
-        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
-        public override bool TermEquals(State s, Variable other) => other.ID == this.ID;
+        public override bool Equals(Term? other) => other is Variable t && t.ID == ID;
+        public override Term Reify(State s) => s.Walk(this);
 
         public override string ToString() => this.Symbol + "#" + this.RecursionLevel;
 

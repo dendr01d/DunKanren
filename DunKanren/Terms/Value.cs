@@ -10,17 +10,18 @@ namespace DunKanren
 {
     public class Value<D> : Term
     {
-        private readonly D Data;
+        private readonly D _data;
+
+        public D GetData() => _data;
 
         public Value(D data)
         {
-            this.Data = data;
+            this._data = data;
         }
 
-        public override bool TermEquals(State s, Term other) => other.TermEquals(s, this);
-        public override bool TermEquals<O>(State s, Value<O> other) => other.Data!.Equals(this.Data);
+        public override bool Equals(Term? other) => other is Value<D> t && t._data != null && t._data.Equals(_data);
 
-        public override string ToString() => this.Data?.ToString() ?? "<UNK?>";
+        public override string ToString() => this._data?.ToString() ?? "<UNK?>";
     }
 
     public static class ValueFactory

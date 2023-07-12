@@ -87,7 +87,7 @@ namespace DunKanren.Goals
             });
         }
 
-        internal override Lazy<Func<State, Stream>> GetNeg() => new Bottom().GetApp();
+        internal override Lazy<Func<State, Stream>> GetNeg() => throw new NotImplementedException("Universal quantification isn't implemnted yet");
 
         public CallFresh(Func<Goal> lambda) :
             this(lambda.Method, (v) => lambda())

@@ -17,6 +17,8 @@ namespace DunKanren.Goals
         public virtual Stream PursueIn(State s) => this.GetApp().Value(s);
         public virtual Stream NegateIn(State s) => this.GetNeg().Value(s);
 
+        public Goal Negate() => !this;
+
         internal abstract Lazy<Func<State, Stream>> GetApp();
         internal abstract Lazy<Func<State, Stream>> GetNeg();
 
@@ -102,6 +104,7 @@ namespace DunKanren.Goals
 
         public static Goal operator &(Goal lhs, Goal rhs) => AND(lhs, rhs);
         public static Goal operator |(Goal lhs, Goal rhs) => OR(lhs, rhs);
+        public static Goal operator !(Goal g) => NOT(g);
     }
 
     /// <summary>
@@ -147,47 +150,6 @@ namespace DunKanren.Goals
         internal override Lazy<Func<State, Stream>> GetNeg() => this.Original.GetApp();
 
         public override uint Ungroundedness => this.Original.Ungroundedness;
-    }
-
-    /// <summary>
-    /// Represents the constraint of a term according to type -- ie a dynamic type check
-    /// </summary>
-    public class Typed<T> : Goal
-        where T : Term
-    {
-        public override string Expression => $"{_term} is <{typeof(T)}>";
-        public override string Description => $"The term {_term} is a <{typeof(T)}>";
-        public override IEnumerable<IPrintable> SubExpressions => new List<Term>() { _term };
-
-        private Term _term;
-
-        public Typed(Term t)
-        {
-            _term = t;
-        }
-
-        internal override Lazy<Func<State, Stream>> GetApp() => new(() => (State s) => Assert(s, _term));
-        internal override Lazy<Func<State, Stream>> GetNeg() => new(() => (State s) => Negate(s, _term));
-
-        public override uint Ungroundedness => _term.Ungroundedness;
-
-        public static Stream Assert(State s, Term t)
-        {
-            if (s.TryConstrainType<T>(t, out State result))
-            {
-                return Stream.Singleton(result);
-            }
-            return Stream.Empty();
-        }
-
-        public static Stream Negate(State s, Term t)
-        {
-            if (s.TryConstrainNotType<T>(t, out State result))
-            {
-                return Stream.Singleton(result);
-            }
-            return Stream.Empty();
-        }
     }
 
     /// <summary>

@@ -41,6 +41,35 @@ namespace DunKanren
 
         public State Dupe() => new(this, false);
 
+        /// <summary>
+        /// Return a state containing all information that <paramref name="other"/> has that this state doesn't.
+        /// May possibly result in an empty state?
+        /// </summary>
+        public State SubtractFrom(State other)
+        {
+            State output = Dupe();
+            Dictionary<Variable, Instance> differences = new();
+
+            foreach(var pair in other.Subs)
+            {
+                if (this.Subs.ContainsKey(pair.Key))
+                {
+                    Instance diff = pair.Value.SubtractInfo(this.Subs[pair.Key]);
+                    if (!diff.Equals(Instance.Empty))
+                    {
+                        differences.Add(pair.Key, diff);
+                    }
+                }
+                else
+                {
+                    differences.Add(pair.Key, pair.Value);
+                }
+            }
+
+            output.Subs = differences.ToImmutableDictionary();
+            return output;
+        }
+
         public uint Ungroundedness => (uint)this.Subs.Sum(x => x.Value.Ungroundedness);
         public int CompareTo(IGrounded? other) => this.Ungroundedness.CompareTo(other?.Ungroundedness ?? 0);
 
@@ -53,18 +82,18 @@ namespace DunKanren
             return (newState, v);
         }
 
-        public (State, Variable) DeclareVar<T>(string varName)
-            where T : Term
-        {
-            (State s, Variable v) = DeclareVar(varName);
-            if (s.Subs.TryGetValue(v, out Instance? inst)
-                && inst is Instance.Indefinite indef)
-            {
-                s.Subs = s.Subs.SetItem(v, indef.AddRestriction(x => x is T));
-            }
+        //public (State, Variable) DeclareVar<T>(string varName)
+        //    where T : Term
+        //{
+        //    (State s, Variable v) = DeclareVar(varName);
+        //    if (s.Subs.TryGetValue(v, out Instance? inst)
+        //        && inst is Instance.Indefinite indef)
+        //    {
+        //        s.Subs = s.Subs.SetItem(v, indef.AddRestriction(x => x is T));
+        //    }
 
-            return (s, v);
-        }
+        //    return (s, v);
+        //}
 
         public Variable[] DeclareVars(out State result, params string[] varNames)
         {
@@ -106,13 +135,22 @@ namespace DunKanren
                 : null;
         }
 
+        public State? Unify(Term u, Term v)
+        {
+            if (TryUnify(u, v, out State result))
+            {
+                return result;
+            }
+            return null;
+        }
         public bool TryUnify(Term u, Term v, out State result)
         {
+            IO.Debug_Prompt();
             IO.Debug_Print($"Can we unite '{u}' <-> '{v}'?");
             Term alpha = this.Walk(u);
             Term beta = this.Walk(v);
 
-            if (!alpha.TermEquals(this, u) || !beta.TermEquals(this, v)) IO.Debug_Print($"\ti.e. '{alpha}' <-> '{beta}'");
+            if (!alpha.Equals(u) || !beta.Equals(v)) IO.Debug_Print($"\ti.e. '{alpha}' <-> '{beta}'");
 
             if (alpha is Cons alphaCons && beta is Cons betaCons)
             {
@@ -131,7 +169,7 @@ namespace DunKanren
             }
 
             result = this;
-            if (alpha.TermEquals(this, beta))
+            if (alpha.Equals(beta))
             {
                 IO.Debug_Print($"'{alpha}' and '{beta}' are the same, so unification is unnecessary");
                 return true;
@@ -156,7 +194,7 @@ namespace DunKanren
                     IO.Debug_Print($"'{v}' is already defined as '{def.Definition}'");
 
                     result = this;
-                    if(def.Definition.TermEquals(this, t))
+                    if(def.Definition.Equals(t))
                     {
                         IO.Debug_Print($"\tand '{def.Definition}' and '{t}' CAN unite in {result}");
                         return true;
@@ -196,6 +234,14 @@ namespace DunKanren
             //return false;
         }
 
+        public State? DisUnify(Term u, Term v)
+        {
+            if (TryDisUnify(u, v, out State result))
+            {
+                return result;
+            }
+            return null;
+        }
         public bool TryDisUnify(Term u, Term v, out State result)
         {
             //See section 8 of Byrd's paper
@@ -204,25 +250,26 @@ namespace DunKanren
             //hypothetical unification succeeds without extension -> terms already equal, disunification fails
             //hypothetical unification succeeds, but requires extension -> terms may or may not be equal, must be constrained
 
+            IO.Debug_Prompt();
             IO.Debug_Print($"Can we constrain '{u}' != '{v}'?");
             Term alpha = this.Walk(u);
             Term beta = this.Walk(v);
 
-            if (!alpha.TermEquals(this, u) || !beta.TermEquals(this, v)) IO.Debug_Print($"\ti.e. '{alpha}' != '{beta}'");
+            if (!alpha.Equals(u) || !beta.Equals(v)) IO.Debug_Print($"\ti.e. '{alpha}' != '{beta}'");
 
             //unification is only possible to start with if one of these terms is a variable
             if (alpha is Variable alphaVar)
             {
-                return TryConstrain(alphaVar, x => !x.TermEquals(this, beta), out result);
+                return TryConstrain(alphaVar, new Constraint.Inequality(beta), out result);
             }
             else if (beta is Variable betaVar)
             {
-                return TryConstrain(betaVar, x => !x.TermEquals(this, alpha), out result);
+                return TryConstrain(betaVar, new Constraint.Inequality(alpha), out result);
             }
 
             //we're looking at two concrete terms then, so it comes down to whether they're equal or not
             result = this;
-            if(!alpha.TermEquals(this, beta))
+            if(!alpha.Equals(beta))
             {
                 IO.Debug_Print($"'{alpha}' and '{beta}' are already different, so no constraint is necessary");
                 return true;
@@ -234,39 +281,39 @@ namespace DunKanren
             }
         }
 
-        public bool TryConstrainType<T>(Term t, out State result)
-            where T : Term
-        {
-            IO.Debug_Print($"Is {t} a <{typeof(T)}>?");
+        //public bool TryConstrainType<T>(Term t, out State result)
+        //    where T : Term
+        //{
+        //    IO.Debug_Print($"Is {t} a <{typeof(T)}>?");
 
-            if (t is Variable v)
-            {
-                return TryConstrain(v, x => x is T, out result);
-            }
-            else
-            {
-                result = this;
-                return t is T;
-            }
-        }
+        //    if (t is Variable v)
+        //    {
+        //        return TryConstrain(v, x => x is T, out result);
+        //    }
+        //    else
+        //    {
+        //        result = this;
+        //        return t is T;
+        //    }
+        //}
 
-        public bool TryConstrainNotType<T>(Term t, out State result)
-            where T : Term
-        {
-            IO.Debug_Print($"Is {t} not a <{typeof(T)}>?");
+        //public bool TryConstrainNotType<T>(Term t, out State result)
+        //    where T : Term
+        //{
+        //    IO.Debug_Print($"Is {t} not a <{typeof(T)}>?");
 
-            if (t is Variable v)
-            {
-                return TryConstrain(v, x => x is not T, out result);
-            }
-            else
-            {
-                result = this;
-                return t is T;
-            }
-        }
+        //    if (t is Variable v)
+        //    {
+        //        return TryConstrain(v, x => x is not T, out result);
+        //    }
+        //    else
+        //    {
+        //        result = this;
+        //        return t is T;
+        //    }
+        //}
 
-        private bool TryConstrain(Variable v, Predicate<Term> pred, out State result)
+        private bool TryConstrain(Variable v, Constraint.Inequality pred, out State result)
         {
             if (Subs.TryGetValue(v, out Instance? inst))
             {
@@ -275,9 +322,9 @@ namespace DunKanren
                     //if the variable is already bound to a term, check to see if that term passes the test
                     IO.Debug_Print($"'{v}' is already defined as '{def.Definition}'");
                     result = this;
-                    if(pred(def.Definition))
+                    if(pred.Check(def.Definition))
                     {
-                        IO.Debug_Print($"\tand '{def.Definition}' complies with the constraint");
+                        IO.Debug_Print($"\tand '{def.Definition}' satisfies the constraint");
                         return true;
                     }
                     else
