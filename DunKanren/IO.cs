@@ -10,8 +10,12 @@ namespace DunKanren
 {
     public static class IO
     {
-        private static bool PromptUser = false;
+        private static bool? PromptUser = null;
 
+        public static void EnablePrompting()
+        {
+            PromptUser = true;
+        }
 
         public static void DisablePrompting()
         {
@@ -20,7 +24,7 @@ namespace DunKanren
 
         public static void Prompt(bool manualOverride = false)
         {
-            if (PromptUser || manualOverride)
+            if (PromptUser == true || manualOverride)
             {
                 Console.WriteLine("[<─┘]");
                 Console.ReadKey(true);

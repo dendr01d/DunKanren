@@ -12,7 +12,7 @@
             IO.DisablePrompting();
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Top()
         {
             State s = State.InitialState();
@@ -25,7 +25,7 @@
             Assert.AreSame(s, str.First());
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Bottom()
         {
             State s = State.InitialState();
@@ -37,7 +37,7 @@
             Assert.AreEqual(0, str.Count());
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Not()
         {
             State s = State.InitialState();
@@ -56,6 +56,18 @@
             Assert.AreEqual(true, str2.Any());
             Assert.AreEqual(1, str2.Count());
             Assert.AreSame(s, str2.First());
+
+            Goal g3 = new CallFresh(x => new Conj()
+            {
+                new Disj()
+                {
+                    x == 5,
+                    x == 6
+                },
+                x != 5
+            });
+
+            Std_Tests.TestGoal(g3, 6);
         }
     }
 }

@@ -12,7 +12,7 @@
             IO.DisablePrompting();
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Fresh()
         {
             Goal g1 = new Fresh("a", "b", "c");
@@ -63,7 +63,7 @@
         //    Assert.AreEqual(1, s3.RecursionLevel);
         //}
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_CallFresh()
         {
             Goal g1 = new CallFresh((a, b, c) => new Top());
@@ -85,7 +85,7 @@
             Assert.AreEqual(0, str2.Count());
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_CallFresh_IntoGoal()
         {
             Goal g1 = new CallFresh((x, y) => new Conj()

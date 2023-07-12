@@ -265,18 +265,7 @@ namespace DunKanren
         {
             //Goal g = Puzzle();
 
-            Term a = 'a';
-            Term b = 'b';
-            Term c = 'c';
-            Term d = 'd';
-
-            Cons trio = Cons.Truct(a, b, c);
-
-            Goal g = new CallFresh(x => new Conj()
-            {
-                x == d,
-                StdGoals.NotMembero(x, trio)
-            });
+            Goal g = new CallFresh(x => StdGoals.Membero(x, Cons.Truct(ValueFactory.Box('a'), ValueFactory.Box('b'))));
 
             //Goal g = new CallFresh((x, y) => new Conj(x == 5, y == 6));
 

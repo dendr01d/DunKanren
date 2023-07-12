@@ -30,13 +30,13 @@
             return output;
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Basic()
         {
             Solve(new CallFresh((x, y) => new Conj(x == 5, y == 6)));
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Intermediate()
         {
             Goal g = new CallFresh((x, y) => new Conj()
@@ -52,7 +52,7 @@
             Solve(g);
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Advanced()
         {
             Goal g = new CallFresh((x, y) => new Conj()
@@ -69,7 +69,7 @@
             Solve(g);
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_DoubleAppendo()
         {
             Goal g = new CallFresh((x, y, z) => new Conj() {
@@ -79,6 +79,26 @@
                     StdGoals.Appendo(w, z, "Duncan")
                 })
             });
+
+            Solve(g);
+        }
+
+        [TestMethod, Timeout(2000)]
+        public void Test_Inference()
+        {
+            Goal g = new CallFresh(x => new Conj()
+            {
+                new Disj()
+                {
+                    x == 2,
+                    x == 3,
+                    x == 4
+                },
+                !MathGoals.Addo(x, x, 6),
+                !MathGoals.Addo(2, 5, 7)
+            });
+
+            Solve(g);
         }
 
         //[TestMethod]

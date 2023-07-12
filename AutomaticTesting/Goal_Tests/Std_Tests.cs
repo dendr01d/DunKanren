@@ -6,6 +6,20 @@
     [TestClass]
     public class Std_Tests
     {
+        /// <summary>
+        /// Given a single-variable <paramref name="query"/> over the term "x", tests to make sure that
+        /// the query produces exactly one state where x is bound to the <paramref name="expectedOutput"/>
+        /// </summary>
+        public static void TestGoal(Goal query, Term expectedOutput)
+        {
+            Stream str = query.Pursue();
+            Assert.AreEqual(true, str.Any());
+            Assert.AreEqual(1, str.Count());
+
+            State output = str.First();
+            Assert.AreEqual(true, output.LookupBySymbol("x")?.Equals(expectedOutput) ?? false);
+        }
+
         [TestInitialize]
         public void Boilerplate()
         {
@@ -26,11 +40,11 @@
             Assert.AreEqual(1, str.Count());
 
             State output = str.First();
-            Assert.AreEqual(true, output.LookupBySymbol("x")?.TermEquals(output, five) ?? false);
-            Assert.AreEqual(true, output.LookupBySymbol("y")?.TermEquals(output, six) ?? false);
+            Assert.AreEqual(true, output.LookupBySymbol("x")?.Equals(five) ?? false);
+            Assert.AreEqual(true, output.LookupBySymbol("y")?.Equals(six) ?? false);
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Appendo()
         {
             string s1 = "hello ";
@@ -41,17 +55,11 @@
             Cons answer = Cons.Truct(s1 + s2);
 
             Goal g = new CallFresh(x => StdGoals.Appendo(string1, string2, x));
-
-            Stream str = g.Pursue();
-            Assert.AreEqual(true, str.Any());
-            Assert.AreEqual(1, str.Count());
-
-            State output = str.First();
-            Assert.AreEqual(true, output.LookupBySymbol("x")?.TermEquals(output, answer) ?? false);
+            Std_Tests.TestGoal(g, answer);
         }
 
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Membero()
         {
             Term a = 'a';
@@ -69,12 +77,12 @@
             //assert that each of a, b, and c could be answers to the query posed
             foreach (Term t in list)
             {
-                Assert.AreEqual(true, str.Any(x => x.LookupBySymbol("x")?.TermEquals(x, t) ?? false));
+                Assert.AreEqual(true, str.Any(x => x.LookupBySymbol("x")?.Equals(t) ?? false));
             }
         }
 
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_NotMembero()
         {
             Term a = 'a';
@@ -110,14 +118,10 @@
                 StdGoals.NotMembero(x, trio)
             });
 
-            Stream str2 = g2.Pursue();
-            Assert.AreEqual(true, str2.Any());
-            Assert.AreEqual(1, str2.Count());
-            State solution = str2.First();
-            Assert.AreEqual(true, solution.LookupBySymbol("x")?.TermEquals(solution, d) ?? false);
+            TestGoal(g2, d);
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Removeo()
         {
             string with = "D6u66nca666n";
@@ -128,23 +132,13 @@
             Term removeTerm = '6';
 
             Goal g1 = new CallFresh(x => StdGoals.Removeo(removeTerm, stringWith, x));
-
-            Stream str1 = g1.Pursue();
-            Assert.AreEqual(true, str1.Any());
-            Assert.AreEqual(1, str1.Count());
-            State sol1 = str1.First();
-            Assert.AreEqual(true, sol1.LookupBySymbol("x")?.TermEquals(sol1, stringWithout) ?? false);
+            TestGoal(g1, stringWithout);
 
             Goal g2 = new CallFresh(x => StdGoals.Removeo(x, stringWith, stringWithout));
-
-            Stream str2 = g2.Pursue();
-            Assert.AreEqual(true, str2.Any());
-            Assert.AreEqual(1, str2.Count());
-            State sol2 = str2.First();
-            Assert.AreEqual(true, sol2.LookupBySymbol("x")?.TermEquals(sol2, removeTerm) ?? false);
+            TestGoal(g2, removeTerm);
         }
 
-        [TestMethod]
+        [TestMethod, Timeout(2000)]
         public void Test_Distincto()
         {
             Term one = '1';
@@ -162,11 +156,7 @@
                 StdGoals.Distincto(Cons.Truct(one, two, x, four))
             });
 
-            Stream str = g.Pursue();
-            Assert.AreEqual(true, str.Any());
-            Assert.AreEqual(1, str.Count());
-            State solution = str.First();
-            Assert.AreEqual(true, solution.LookupBySymbol("x")?.TermEquals(solution, three) ?? false);
+            TestGoal(g, three);
         }
     }
 }
